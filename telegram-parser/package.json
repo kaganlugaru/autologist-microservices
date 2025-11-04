@@ -1,0 +1,14 @@
+{
+  "name": "autologist-telegram-parser",
+  "version": "1.0.0",
+  "description": "Telegram Parser для системы Autologist",
+  "main": "telegram_parser.py",
+  "scripts": {
+    "parse": "python telegram_parser.py",
+    "monitor": "python telegram_parser.py --monitor",
+    "install-deps": "pip install -r requirements.txt"
+  },
+  "keywords": ["telegram", "parser", "autologist"],
+  "author": "Autologist Team",
+  "license": "MIT"
+}
