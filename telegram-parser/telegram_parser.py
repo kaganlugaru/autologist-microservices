@@ -544,24 +544,31 @@ class TelegramParser:
             logger.error(f"ОШИБКА: Отправка сообщений получателям: {e}")
 
     async def get_recipients_for_keywords(self, keywords_found):
-        """Получение списка получателей для найденных ключевых слов"""
+        """Получение списка получателей для найденных ключевых слов через категории"""
         try:
-            # Формируем запрос для поиска получателей по ключевым словам
-            recipients = []
+            logger.info(f"ОТПРАВКА: Поиск получателей для ключевых слов: {keywords_found}")
+            
+            # Сначала найдем категории для найденных ключевых слов
+            categories = set()
             for keyword in keywords_found:
-                # Поиск нечувствительный к регистру - проверяем как с маленькой, так и с большой буквы
-                keyword_lower = keyword.lower()
-                keyword_upper = keyword.capitalize()
+                # Поиск категории по ключевому слову (нечувствительный к регистру)
+                keyword_variants = [keyword.lower(), keyword.upper(), keyword.capitalize()]
                 
-                # Пробуем найти с маленькой буквы
-                response = self.supabase.table('message_recipients').select('*').eq('keyword', keyword_lower).eq('active', True).execute()
+                for variant in keyword_variants:
+                    response = self.supabase.table('keywords').select('category').eq('keyword', variant).eq('active', True).execute()
+                    for row in response.data:
+                        if row.get('category'):
+                            categories.add(row['category'])
+                            logger.info(f"ОТПРАВКА: Ключевое слово '{keyword}' относится к категории '{row['category']}'")
+            
+            logger.info(f"ОТПРАВКА: Найденные категории: {list(categories)}")
+            
+            # Теперь найдем получателей для этих категорий
+            recipients = []
+            for category in categories:
+                response = self.supabase.table('recipient_categories').select('*').eq('category', category).eq('active', True).execute()
                 recipients.extend(response.data)
-                
-                # Пробуем найти с большой буквы
-                response = self.supabase.table('message_recipients').select('*').eq('keyword', keyword_upper).eq('active', True).execute()
-                recipients.extend(response.data)
-                
-                logger.info(f"ОТПРАВКА: Поиск получателей для '{keyword}' (пробуем '{keyword_lower}' и '{keyword_upper}')")
+                logger.info(f"ОТПРАВКА: Для категории '{category}' найдено {len(response.data)} получателей")
             
             # Убираем дубликаты по username
             unique_recipients = []
@@ -571,7 +578,7 @@ class TelegramParser:
                     unique_recipients.append(recipient)
                     seen_usernames.add(recipient['username'])
             
-            logger.info(f"ОТПРАВКА: Найдено {len(unique_recipients)} получателей для ключевых слов: {keywords_found}")
+            logger.info(f"ОТПРАВКА: Найдено {len(unique_recipients)} уникальных получателей для категорий: {list(categories)}")
             return unique_recipients
             
         except Exception as e:
