@@ -1,112 +1,101 @@
-import React, { useState } from 'react';
-import './MessageList.css';
-
-export default function MessageList({ messages = [], onUpdate, apiBase }) {
-  const [filter, setFilter] = useState('all');
-  const [searchText, setSearchText] = useState('');
-  const [duplicateInfo, setDuplicateInfo] = useState({});
-  const [loadingDuplicates, setLoadingDuplicates] = useState({});
-  
-  // Пагинация
-  const [currentPage, setCurrentPage] = useState(1);
-  const [messagesPerPage, setMessagesPerPage] = useState(20);
-
-  // Функция для загрузки информации о дубликатах
-  const loadDuplicateInfo = async (messageId) => {
-    if (loadingDuplicates[messageId] || duplicateInfo[messageId]) return;
-    
-    setLoadingDuplicates(prev => ({ ...prev, [messageId]: true }));
-    
-    try {
-      const response = await fetch(`/api/messages/${messageId}/duplicates`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setDuplicateInfo(prev => ({
-          ...prev,
-          [messageId]: result.data
-        }));
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки дубликатов:', error);
-    } finally {
-      setLoadingDuplicates(prev => ({ ...prev, [messageId]: false }));
-    }
-  };
-
-  const filteredMessages = messages.filter(msg => {
-    const matchesFilter = filter === 'all' || 
-      (filter === 'duplicates' && msg.is_duplicate) ||
-      (filter === 'new' && !msg.is_duplicate) ||
-      (filter === 'keywords' && msg.contains_keywords);
-    
-    const matchesSearch = !searchText || 
-      msg.message_text.toLowerCase().includes(searchText.toLowerCase()) ||
-      msg.chat_name.toLowerCase().includes(searchText.toLowerCase());
-    
-    return matchesFilter && matchesSearch;
-  });
-
-  // Пагинация
-  const totalPages = Math.ceil(filteredMessages.length / messagesPerPage);
-  const startIndex = (currentPage - 1) * messagesPerPage;
-  const paginatedMessages = filteredMessages.slice(startIndex, startIndex + messagesPerPage);
-
-  // Сброс страницы при изменении фильтров
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, searchText]);
-
-  const getDuplicateReason = (msg) => {
-    if (msg.duplicate_reason) return msg.duplicate_reason;
-    if (msg.is_duplicate) return "ДУБЛИКАТ: Похожее сообщение уже обработано";
-    return "НОВОЕ: Первое сообщения такого типа";
-  };
-
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleString('ru-RU');
-  };
-
-  // Функция для извлечения номеров телефонов из текста
-  const extractPhoneNumbers = (text) => {
-    const phonePatterns = [
-      /\+7\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}/g,  // +7 999 999 99 99
-      /\+7\d{10}/g,                             // +79999999999
-      /8\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}/g,   // 8 999 999 99 99
-      /8\d{10}/g,                               // 89999999999
-      /\+\d{1,3}\s?\d{7,15}/g,                 // Международные номера
-      /\d{3}[-\s]?\d{3}[-\s]?\d{4}/g,         // 999-999-9999 или 999 999 9999
-    ];
-    
-    let phones = [];
-    phonePatterns.forEach(pattern => {
-      const matches = text.match(pattern);
-      if (matches) {
-        phones = phones.concat(matches);
-      }
-    });
-    
-    // Убираем дубликаты и нормализуем номера
-    return [...new Set(phones)];
-  };
-
-  // Функция для форматирования номера для ссылок
-  const formatPhoneForLink = (phone) => {
-    // Убираем все кроме цифр и +
-    let cleanPhone = phone.replace(/[^\d+]/g, '');
-    
-    // Если номер начинается с 8, заменяем на +7
-    if (cleanPhone.startsWith('8') && cleanPhone.length === 11) {
-      cleanPhone = '+7' + cleanPhone.slice(1);
-    }
-    
-    // Если номер не начинается с +, добавляем +
-    if (!cleanPhone.startsWith('+')) {
-      cleanPhone = '+' + cleanPhone;
-    }
-    
-    return cleanPhone;
-  };
+        {paginatedMessages.map(message => {
+          const phoneNumbers = extractPhoneNumbers(message.message_text);
+          return (
+            <div key={message.id} className={`message-card ${message.is_duplicate ? 'duplicate' : 'new'} ${message.contains_keywords ? 'has-keywords' : ''}`}>
+              <div className="message-header">
+                <span className="message-author" title="Открыть профиль пользователя" onClick={() => openUserProfile(message)}>
+                  💎 {getAuthorDisplayName(message)}
+                </span>
+                <span className="message-time">🕒 {formatTime(message.created_at)}</span>
+                <span className="chat-info">💬 {message.chat_name}</span>
+              </div>
+              <div className="message-content">
+                <div className="content-label">📝 Текст:</div>
+                <p className="message-text">{message.message_text}</p>
+                {/* Кликабельные телефоны с кнопками */}
+                {phoneNumbers.length > 0 && (
+                  <div className="phone-section">
+                    {phoneNumbers.map((phone, index) => (
+                      <div key={index} className="phone-item">
+                        <a className="message-phone" href={`tel:${formatPhoneForLink(phone)}`}>📞 {phone}</a>
+                        <div className="contact-buttons">
+                          <button 
+                            className="whatsapp-btn"
+                            onClick={() => openWhatsAppChat(phone)}
+                            title="Написать в WhatsApp"
+                          >
+                            WhatsApp
+                          </button>
+                          <button 
+                            className="telegram-btn"
+                            onClick={() => openTelegramByPhone(phone)}
+                            title="Написать в Telegram"
+                          >
+                            Telegram
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Секция дубликатов - показываем только для оригинальных сообщений */}
+              {!message.is_duplicate && (
+                <div className="duplicates-section">
+                  <button 
+                    className="duplicates-toggle"
+                    onClick={() => loadDuplicateInfo(message.id)}
+                    disabled={loadingDuplicates[message.id]}
+                  >
+                    {loadingDuplicates[message.id] ? '⏳ Загрузка...' : 
+                     duplicateInfo[message.id] ? `🔄 Дубликаты (${duplicateInfo[message.id].length})` : 
+                     '🔄 Показать дубликаты'}
+                  </button>
+                  {duplicateInfo[message.id] && duplicateInfo[message.id].length > 0 && (
+                    <div className="duplicates-list">
+                      <div className="duplicates-header">
+                        <strong>📍 Это сообщение также появлялось в:</strong>
+                      </div>
+                      {duplicateInfo[message.id].map((duplicate, index) => (
+                        <div key={index} className="duplicate-item">
+                          <div className="duplicate-chat">
+                            💬 <strong>{duplicate.duplicate_chat_name}</strong>
+                          </div>
+                          <div className="duplicate-author">
+                            👤 {duplicate.duplicate_username || 
+                                 `${duplicate.duplicate_user_first_name || ''} ${duplicate.duplicate_user_last_name || ''}`.trim() || 
+                                 `ID: ${duplicate.duplicate_user_id}`}
+                          </div>
+                          <div className="duplicate-time">
+                            🕐 {formatTime(duplicate.detected_at)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {duplicateInfo[message.id] && duplicateInfo[message.id].length === 0 && (
+                    <div className="no-duplicates">
+                      ✅ Дубликатов не найдено
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="message-footer">
+                {message.matched_keywords && message.matched_keywords.length > 0 && (
+                  <div className="keywords">
+                    🔍 <strong>Ваши ключевые слова:</strong> {message.matched_keywords.join(', ')}
+                  </div>
+                )}
+                <div className="status-info">
+                  <span className={`status ${message.is_duplicate ? 'duplicate' : 'new'}`}>
+                    {message.is_duplicate ? '🔄 ДУБЛИКАТ' : '✅ НОВОЕ'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
   // Функция для создания Telegram диалога с пользователем
   const openTelegramChat = (username) => {
@@ -134,7 +123,7 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
   // Функция для создания WhatsApp диалога
   const openWhatsAppChat = (phone) => {
     const cleanPhone = formatPhoneForLink(phone);
-    // Открываем в новой вкладке
+    // Открываем в новой вкладке и сразу закрываем текущую
     const whatsappWindow = window.open(`https://wa.me/${cleanPhone}`, '_blank');
     if (whatsappWindow) {
       // Небольшая задержка для корректного открытия
@@ -149,26 +138,69 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
     const cleanPhone = formatPhoneForLink(phone);
     console.log('🔗 Открываем телефон в Telegram:', cleanPhone);
     
-    // Открываем веб-версию Telegram
-    const webUrl = 'https://web.telegram.org/k/';
-    window.open(webUrl, '_blank');
+    // Пробуем разные протоколы для десктопного приложения
+    const desktopUrls = [
+      `tg://resolve?phone=${cleanPhone}`,
+      `tg://resolve?phone=${cleanPhone.replace('+', '')}`,
+      `tg://msg?phone=${cleanPhone}`,
+      `tg://msg?phone=${cleanPhone.replace('+', '')}`
+    ];
     
-    // Копируем номер в буфер обмена для удобства поиска
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(cleanPhone).then(() => {
+    let urlIndex = 0;
+    
+    function tryNextDesktopUrl() {
+      if (urlIndex < desktopUrls.length) {
+        console.log(`Попытка ${urlIndex + 1}: ${desktopUrls[urlIndex]}`);
+        
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = desktopUrls[urlIndex];
+        document.body.appendChild(iframe);
+        
         setTimeout(() => {
-          alert(`Telegram открыт! Номер скопирован: "${cleanPhone}"\nВставьте его в поиск Telegram для создания диалога.`);
-        }, 1000);
-      }).catch(() => {
-        setTimeout(() => {
-          alert(`Telegram открыт! Найдите пользователя по номеру: "${cleanPhone}"`);
-        }, 1000);
-      });
-    } else {
-      setTimeout(() => {
-        alert(`Telegram открыт! Найдите пользователя по номеру: "${cleanPhone}"`);
-      }, 1000);
+          document.body.removeChild(iframe);
+          urlIndex++;
+          
+          // Пробуем следующий URL через 300ms
+          if (urlIndex < desktopUrls.length) {
+            setTimeout(tryNextDesktopUrl, 300);
+          } else {
+            // Если все десктопные варианты не сработали, открываем веб-версию
+            openWebTelegramWithPhone(cleanPhone);
+          }
+        }, 600);
+      } else {
+        openWebTelegramWithPhone(cleanPhone);
+      }
     }
+    
+    function openWebTelegramWithPhone(phone) {
+      console.log('Открываем веб-версию Telegram для номера:', phone);
+      
+      // Открываем веб-версию Telegram
+      const webUrl = 'https://web.telegram.org/k/';
+      window.open(webUrl, '_blank');
+      
+      // Копируем номер в буфер обмена для удобства поиска
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(phone).then(() => {
+          setTimeout(() => {
+            alert(`Telegram открыт! Номер скопирован: "${phone}"\nВставьте его в поиск Telegram для создания диалога.`);
+          }, 1000);
+        }).catch(() => {
+          setTimeout(() => {
+            alert(`Telegram открыт! Найдите пользователя по номеру: "${phone}"`);
+          }, 1000);
+        });
+      } else {
+        setTimeout(() => {
+          alert(`Telegram открыт! Найдите пользователя по номеру: "${phone}"`);
+        }, 1000);
+      }
+    }
+    
+    // Начинаем с первого URL
+    tryNextDesktopUrl();
   };
 
   // Функция для получения отображаемого имени автора
@@ -198,27 +230,73 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
       // Если есть username, используем его
       openTelegramChat(message.username);
     } else {
-      // Если нет username, открываем веб-версию Telegram
-      const webUrl = 'https://web.telegram.org/k/';
-      window.open(webUrl, '_blank');
+      // Если нет username, пытаемся найти по ID
+      const userId = message.user_id;
+      const userName = getAuthorDisplayName(message);
       
-      // Копируем имя пользователя в буфер обмена для удобства поиска
-      const searchText = getAuthorDisplayName(message).replace('@', '');
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(searchText).then(() => {
+      // Пробуем разные протоколы для десктопного приложения
+      const desktopUrls = [
+        `tg://resolve?id=${userId}`,
+        `tg://user?id=${userId}`,
+        `tg://openmessage?user_id=${userId}`
+      ];
+      
+      let urlIndex = 0;
+      
+      function tryNextDesktopUrl() {
+        if (urlIndex < desktopUrls.length) {
+          console.log(`Попытка ${urlIndex + 1}: ${desktopUrls[urlIndex]}`);
+          
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = desktopUrls[urlIndex];
+          document.body.appendChild(iframe);
+          
           setTimeout(() => {
-            alert(`Telegram открыт! Имя пользователя скопировано: "${getAuthorDisplayName(message)}"\nИспользуйте поиск в Telegram или вставьте имя для поиска.\n\nТакже можете искать по ID: ${message.user_id}`);
-          }, 1000);
-        }).catch(() => {
-          setTimeout(() => {
-            alert(`Telegram открыт! Найдите пользователя по имени: "${getAuthorDisplayName(message)}"\nИли по ID: ${message.user_id}`);
-          }, 1000);
-        });
-      } else {
-        setTimeout(() => {
-          alert(`Telegram открыт! Найдите пользователя по имени: "${getAuthorDisplayName(message)}"\nИли по ID: ${message.user_id}`);
-        }, 1000);
+            document.body.removeChild(iframe);
+            urlIndex++;
+            
+            // Пробуем следующий URL через 300ms
+            if (urlIndex < desktopUrls.length) {
+              setTimeout(tryNextDesktopUrl, 300);
+            } else {
+              // Если все десктопные варианты не сработали, открываем веб-версию
+              openWebTelegramWithNameAndId(userId, userName);
+            }
+          }, 600);
+        } else {
+          openWebTelegramWithNameAndId(userId, userName);
+        }
       }
+      
+      function openWebTelegramWithNameAndId(userId, userName) {
+        console.log('Открываем веб-версию Telegram для поиска пользователя:', userName);
+        
+        // Открываем веб-версию Telegram
+        const webUrl = 'https://web.telegram.org/k/';
+        window.open(webUrl, '_blank');
+        
+        // Копируем имя пользователя в буфер обмена для удобства поиска
+        const searchText = userName.replace('@', '');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(searchText).then(() => {
+            setTimeout(() => {
+              alert(`Telegram открыт! Имя пользователя скопировано: "${userName}"\nИспользуйте поиск в Telegram или вставьте имя для поиска.\n\nТакже можете искать по ID: ${userId}`);
+            }, 1000);
+          }).catch(() => {
+            setTimeout(() => {
+              alert(`Telegram открыт! Найдите пользователя по имени: "${userName}"\nИли по ID: ${userId}`);
+            }, 1000);
+          });
+        } else {
+          setTimeout(() => {
+            alert(`Telegram открыт! Найдите пользователя по имени: "${userName}"\nИли по ID: ${userId}`);
+          }, 1000);
+        }
+      }
+      
+      // Начинаем с первого URL
+      tryNextDesktopUrl();
     }
   };
 
@@ -262,21 +340,14 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
         </div>
       </div>
 
-      <div className="message-cards">
-        {paginatedMessages.map(message => {
-          const phoneNumbers = extractPhoneNumbers(message.message_text);
-          
-          return (
-            <div key={message.id} className={`message-card ${message.is_duplicate ? 'duplicate' : 'new'} ${message.contains_keywords ? 'has-keywords' : ''}`}>
               <div className="message-header">
                 <span className="message-author" title="Открыть профиль пользователя" onClick={() => openUserProfile(message)}>
-                  {getAuthorDisplayName(message)}
+                  💎 {getAuthorDisplayName(message)}
                 </span>
-                <span className={`status ${message.is_duplicate ? 'duplicate' : 'new'}`}>
-                  {message.is_duplicate ? 'ДУБЛИКАТ' : 'НОВОЕ'}
-                </span>
-                <span className="message-time">{formatTime(message.created_at)}</span>
-                <span className="chat-info">{message.chat_name}</span>
+                <span className="message-time">🕒 {formatTime(message.created_at)}</span>
+                <span className="chat-info">💬 {message.chat_name}</span>
+              </div>
+                </div>
               </div>
 
               <div className="message-content">
@@ -361,6 +432,12 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
                     🔍 <strong>Ваши ключевые слова:</strong> {message.matched_keywords.join(', ')}
                   </div>
                 )}
+                
+                <div className="status-info">
+                  <span className={`status ${message.is_duplicate ? 'duplicate' : 'new'}`}>
+                    {message.is_duplicate ? '🔄 ДУБЛИКАТ' : '✅ НОВОЕ'}
+                  </span>
+                </div>
               </div>
             </div>
           );

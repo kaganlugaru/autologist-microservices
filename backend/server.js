@@ -8,14 +8,12 @@ require('dotenv').config();
 
 // Импорт общего модуля для работы с БД
 const DatabaseManager = require('../shared/database');
-const TelegramRealAPI = require('./telegram-real-api');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Инициализация базы данных и API
+// Инициализация базы данных
 let db;
-const telegramRealAPI = new TelegramRealAPI();
 
 // Middleware
 app.use(cors());
@@ -48,7 +46,7 @@ app.get('/api/status', async (req, res) => {
 // Получить последние сообщения
 app.get('/api/messages', async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 1000;
     const messages = await db.getRecentMessages(limit);
     
     res.json({
@@ -138,6 +136,7 @@ app.post('/api/keywords', async (req, res) => {
       .from('keywords')
       .insert({
         keyword: keyword.trim(),
+        category: 'грузоперевозки', // Автоматически присваиваем категорию
         active: true
       })
       .select()
@@ -147,7 +146,8 @@ app.post('/api/keywords', async (req, res) => {
 
     res.json({
       success: true,
-      data: data
+      data: data,
+      message: `Ключевое слово "${keyword}" добавлено в категорию "грузоперевозки"`
     });
   } catch (error) {
     res.status(500).json({
@@ -157,15 +157,19 @@ app.post('/api/keywords', async (req, res) => {
   }
 });
 
-// Обновить статус ключевого слова
+// Обновить ключевое слово
 app.put('/api/keywords/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { active } = req.body;
+    const { active, category } = req.body;
+
+    const updateData = {};
+    if (typeof active !== 'undefined') updateData.active = active;
+    if (typeof category !== 'undefined') updateData.category = category;
 
     const { data, error } = await db.supabase
       .from('keywords')
-      .update({ active })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -174,7 +178,8 @@ app.put('/api/keywords/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: data
+      data: data,
+      message: 'Ключевое слово обновлено'
     });
   } catch (error) {
     res.status(500).json({
@@ -208,14 +213,15 @@ app.delete('/api/keywords/:id', async (req, res) => {
   }
 });
 
-// ===== ПОЛУЧАТЕЛИ СООБЩЕНИЙ =====
+// ===== ПОЛУЧАТЕЛИ СООБЩЕНИЙ (РЕДИРЕКТ НА НОВУЮ СИСТЕМУ) =====
 
-// Получить всех получателей
+// Получить всех получателей - редирект на новую систему категорий
 app.get('/api/recipients', async (req, res) => {
   try {
     const { data, error } = await db.supabase
-      .from('message_recipients')
+      .from('recipient_categories')
       .select('*')
+      .order('category', { ascending: true })
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -234,16 +240,43 @@ app.get('/api/recipients', async (req, res) => {
   }
 });
 
-// Добавить нового получателя
-app.post('/api/recipients', async (req, res) => {
+// ===== ПОЛУЧАТЕЛИ ПО КАТЕГОРИЯМ (НОВАЯ СИСТЕМА) =====
+
+// Получить всех получателей по категориям
+app.get('/api/recipient-categories', async (req, res) => {
   try {
-    const { name, username, keyword, active } = req.body;
+    const { data, error } = await db.supabase
+      .from('recipient_categories')
+      .select('*')
+      .order('category', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data || []
+    });
+  } catch (error) {
+    console.error('Ошибка получения получателей по категориям:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      data: []
+    });
+  }
+});
+
+// Добавить нового получателя по категории
+app.post('/api/recipient-categories', async (req, res) => {
+  try {
+    const { name, username, category, active } = req.body;
 
     // Валидация обязательных полей
-    if (!name || !username || !keyword) {
+    if (!name || !username || !category) {
       return res.status(400).json({
         success: false,
-        error: 'Обязательные поля: name, username, keyword'
+        error: 'Обязательные поля: name, username, category'
       });
     }
 
@@ -253,21 +286,21 @@ app.post('/api/recipients', async (req, res) => {
     const recipientData = {
       name: name.trim(),
       username: cleanUsername,
-      keyword: keyword.trim(),
+      category: category.trim(),
       active: active !== false // по умолчанию true
     };
 
     const { data, error } = await db.supabase
-      .from('message_recipients')
+      .from('recipient_categories')
       .insert([recipientData])
       .select();
 
     if (error) {
       // Проверяем на дубликат
-      if (error.code === '23505' && error.constraint === 'unique_recipient_keyword') {
+      if (error.code === '23505') {
         return res.status(409).json({
           success: false,
-          error: 'Получатель для этого ключевого слова уже существует'
+          error: 'Получатель для этой категории уже существует'
         });
       }
       throw error;
@@ -275,11 +308,11 @@ app.post('/api/recipients', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Получатель добавлен',
+      message: 'Получатель добавлен в категорию',
       data: data[0]
     });
   } catch (error) {
-    console.error('Ошибка добавления получателя:', error);
+    console.error('Ошибка добавления получателя по категории:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -287,33 +320,19 @@ app.post('/api/recipients', async (req, res) => {
   }
 });
 
-// Обновить статус получателя
-app.patch('/api/recipients/:id', async (req, res) => {
+// Обновить статус получателя по категории
+app.patch('/api/recipient-categories/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { active } = req.body;
 
-    if (typeof active !== 'boolean') {
-      return res.status(400).json({
-        success: false,
-        error: 'Поле active должно быть boolean'
-      });
-    }
-
     const { data, error } = await db.supabase
-      .from('message_recipients')
-      .update({ active, updated_at: new Date().toISOString() })
+      .from('recipient_categories')
+      .update({ active })
       .eq('id', id)
       .select();
 
     if (error) throw error;
-
-    if (!data || data.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Получатель не найден'
-      });
-    }
 
     res.json({
       success: true,
@@ -321,7 +340,7 @@ app.patch('/api/recipients/:id', async (req, res) => {
       data: data[0]
     });
   } catch (error) {
-    console.error('Ошибка обновления получателя:', error);
+    console.error('Ошибка обновления получателя по категории:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -329,13 +348,13 @@ app.patch('/api/recipients/:id', async (req, res) => {
   }
 });
 
-// Удалить получателя
-app.delete('/api/recipients/:id', async (req, res) => {
+// Удалить получателя по категории
+app.delete('/api/recipient-categories/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
     const { error } = await db.supabase
-      .from('message_recipients')
+      .from('recipient_categories')
       .delete()
       .eq('id', id);
 
@@ -343,10 +362,10 @@ app.delete('/api/recipients/:id', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Получатель удален'
+      message: 'Получатель удален из категории'
     });
   } catch (error) {
-    console.error('Ошибка удаления получателя:', error);
+    console.error('Ошибка удаления получателя по категории:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -569,189 +588,6 @@ app.post('/api/telegram/check-chats', async (req, res) => {
     });
   } catch (error) {
     console.error('Ошибка проверки чатов:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Получить все реальные Telegram чаты из аккаунта (кэшированные)
-app.get('/api/telegram/real-chats/cached', async (req, res) => {
-  try {
-    console.log('📋 Получение кэшированных реальных чатов...');
-    
-    const result = await telegramRealAPI.getCachedChats();
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        data: result.data,
-        cached: result.cached || false
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Ошибка получения кэшированных чатов:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Получить все реальные Telegram чаты из аккаунта (свежие данные)
-app.post('/api/telegram/real-chats/refresh', async (req, res) => {
-  try {
-    console.log('🔄 Обновление списка реальных чатов...');
-    
-    const result = await telegramRealAPI.getRealChats();
-    
-    if (result.success) {
-      res.json({
-        success: true,
-        data: result.data,
-        message: 'Чаты успешно обновлены'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: result.error
-      });
-    }
-  } catch (error) {
-    console.error('Ошибка обновления чатов:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Добавить чаты в мониторинг из реальных чатов
-app.post('/api/telegram/real-chats/add-to-monitoring', async (req, res) => {
-  try {
-    const { chatIds } = req.body;
-    
-    if (!chatIds || !Array.isArray(chatIds)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Требуется массив chatIds'
-      });
-    }
-
-    console.log(`📱 Добавление ${chatIds.length} чатов в мониторинг...`);
-
-    // Получаем кэшированные данные чатов
-    const cachedResult = await telegramRealAPI.getCachedChats();
-    
-    if (!cachedResult.success) {
-      return res.status(404).json({
-        success: false,
-        message: 'Данные чатов не найдены. Сначала обновите список чатов.'
-      });
-    }
-
-    const allChats = cachedResult.data.chats;
-    const selectedChats = allChats.filter(chat => chatIds.includes(chat.id));
-
-    if (selectedChats.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Выбранные чаты не найдены в данных'
-      });
-    }
-
-    let added = 0;
-    let skipped = 0;
-    const results = [];
-
-    for (const chat of selectedChats) {
-      console.log(`🔍 Обрабатываем чат: ${chat.title} (ID: ${chat.id})`);
-      try {
-        // Проверяем, есть ли уже такой чат
-        const { data: existingChat, error: checkError } = await db.supabase
-          .from('monitored_chats')
-          .select('id')
-          .eq('chat_id', chat.id.toString())
-          .single();
-
-        console.log(`🔎 Проверка существования чата ${chat.title}:`, { existingChat, checkError });
-
-        if (existingChat) {
-          skipped++;
-          console.log(`⏭️ Чат ${chat.title} уже существует, пропускаем`);
-          results.push({
-            chat_id: chat.id,
-            title: chat.title,
-            status: 'skipped',
-            reason: 'Уже существует'
-          });
-          continue;
-        }
-
-        // Добавляем новый чат
-        const { data: newChat, error } = await db.supabase
-          .from('monitored_chats')
-          .insert({
-            chat_id: chat.id.toString(),
-            chat_name: chat.title,
-            platform: 'telegram',
-            active: true // По умолчанию активируем
-          })
-          .select()
-          .single();
-
-        console.log(`💾 Попытка добавить чат ${chat.title} (ID: ${chat.id})`);
-        
-        if (error) {
-          console.error(`❌ Ошибка добавления чата ${chat.title}:`, error);
-          results.push({
-            chat_id: chat.id,
-            title: chat.title,
-            status: 'error',
-            reason: error.message
-          });
-        } else {
-          added++;
-          console.log(`✅ Чат ${chat.title} успешно добавлен в БД`);
-          results.push({
-            chat_id: chat.id,
-            title: chat.title,
-            status: 'added',
-            participants: chat.participants_count
-          });
-        }
-
-      } catch (err) {
-        results.push({
-          chat_id: chat.id,
-          title: chat.title,
-          status: 'error',
-          reason: err.message
-        });
-      }
-    }
-
-    console.log(`📊 Итоги добавления: добавлено=${added}, пропущено=${skipped}, всего обработано=${results.length}`);
-
-    res.json({
-      success: true,
-      data: {
-        added: added,
-        skipped: skipped,
-        total: chatIds.length,
-        results: results
-      },
-      message: `Добавлено ${added} чатов, пропущено ${skipped}`
-    });
-
-  } catch (error) {
-    console.error('Ошибка добавления чатов в мониторинг:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -1038,6 +874,146 @@ app.post('/api/parser/run-once', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Ошибка разового парсинга',
+      error: error.message
+    });
+  }
+});
+
+// ===== API ДЛЯ ДУБЛИКАТОВ =====
+
+// Получить информацию о дубликатах для конкретного сообщения
+app.get('/api/messages/:id/duplicates', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { data, error } = await db.supabase
+      .from('message_duplicates')
+      .select(`
+        *,
+        original_message:messages(id, message_text, chat_name, username, created_at)
+      `)
+      .eq('original_message_id', id)
+      .order('detected_at', { ascending: false });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data || [],
+      total: data ? data.length : 0
+    });
+  } catch (error) {
+    console.error('Ошибка получения дубликатов:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Получить статистику дубликатов
+app.get('/api/duplicates/stats', async (req, res) => {
+  try {
+    // Общее количество дубликатов
+    const { data: totalDuplicates, error: duplicatesError } = await db.supabase
+      .from('message_duplicates')
+      .select('id', { count: 'exact' });
+
+    if (duplicatesError) throw duplicatesError;
+
+    // Количество уникальных сообщений с дубликатами
+    const { data: uniqueMessages, error: uniqueError } = await db.supabase
+      .from('message_duplicates')
+      .select('original_message_id');
+
+    if (uniqueError) throw uniqueError;
+
+    // Подсчитаем уникальные original_message_id
+    const uniqueCount = uniqueMessages ? 
+      new Set(uniqueMessages.map(item => item.original_message_id)).size : 0;
+
+    // Топ чатов по количеству дубликатов
+    const { data: topChats, error: chatsError } = await db.supabase
+      .from('message_duplicates')
+      .select('duplicate_chat_name')
+      .limit(10);
+
+    if (chatsError) throw chatsError;
+
+    // Группируем чаты
+    const chatStats = {};
+    if (topChats) {
+      topChats.forEach(item => {
+        chatStats[item.duplicate_chat_name] = (chatStats[item.duplicate_chat_name] || 0) + 1;
+      });
+    }
+
+    const topChatsList = Object.entries(chatStats)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count]) => ({ chat_name: name, duplicates_count: count }));
+
+    res.json({
+      success: true,
+      data: {
+        total_duplicates: totalDuplicates?.length || 0,
+        unique_messages_with_duplicates: uniqueCount,
+        top_duplicate_chats: topChatsList
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения статистики дубликатов:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Получить детальную информацию о дубликатах с пагинацией
+app.get('/api/duplicates/detailed', async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const { data, error } = await db.supabase
+      .from('message_duplicates')
+      .select(`
+        id,
+        original_message_id,
+        duplicate_chat_id,
+        duplicate_chat_name,
+        duplicate_user_id,
+        duplicate_username,
+        duplicate_user_first_name,
+        duplicate_user_last_name,
+        detected_at,
+        messages!inner(
+          id,
+          message_text,
+          created_at,
+          chat_name,
+          username
+        )
+      `)
+      .order('detected_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data || [],
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        has_more: data && data.length === parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения детальной информации о дубликатах:', error);
+    res.status(500).json({
+      success: false,
       error: error.message
     });
   }

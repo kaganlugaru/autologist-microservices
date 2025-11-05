@@ -1,0 +1,312 @@
+/* ===== УЛЬТРА-КОМПАКТНОЕ УПРАВЛЕНИЕ ===== */
+.management-container {
+  padding: 8px;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  max-height: 100vh;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+/* ===== УПРАВЛЕНИЕ ПАРСЕРОМ ===== */
+.parser-control {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.control-header h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.parser-status .status-indicator {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-indicator.running {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-indicator.stopped {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.control-content {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.parser-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.parser-stat {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.stat-value.active {
+  color: #059669;
+}
+
+.stat-value.inactive {
+  color: #dc2626;
+}
+
+.stat-value.error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.parser-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-parser, .btn-refresh {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.btn-parser.start {
+  background: #059669;
+  color: white;
+}
+
+.btn-parser.stop {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-refresh {
+  background: var(--border);
+  color: var(--text);
+}
+
+.btn-parser:hover, .btn-refresh:hover {
+  opacity: 0.9;
+}
+
+.btn-parser:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== КОМПАКТНАЯ СТАТИСТИКА ===== */
+.compact-stats {
+  margin-bottom: 8px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 100px;
+  flex: 1;
+}
+
+.stat-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.stat-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-content p {
+  font-size: 11px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+/* ===== КОМПАКТНАЯ ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ ===== */
+.info-compact {
+  margin-bottom: 8px;
+}
+
+.info-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.info-section {
+  flex: 1;
+  min-width: 120px;
+}
+
+.info-section h4 {
+  font-size: 12px;
+  margin: 0 0 4px 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.compact-list, .compact-keywords, .compact-recipients, .compact-time {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.compact-item {
+  display: block;
+  margin-bottom: 1px;
+}
+
+.keyword-tag {
+  display: inline-block;
+  background: var(--primary);
+  color: white;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin: 0 2px 2px 0;
+}
+
+.compact-empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.recipient-count {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.recipient-preview {
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+/* ===== КОМПАКТНАЯ ФОРМА ПОЛУЧАТЕЛЕЙ ===== */
+.recipients-compact {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.recipients-header h4 {
+  font-size: 13px;
+  margin: 0 0 6px 0;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.recipients-form-compact {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.input-compact, .select-compact {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 80px;
+  flex: 1;
+}
+
+.input-compact:focus, .select-compact:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn-compact {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-compact:hover {
+  opacity: 0.9;
+}
+
+.btn-compact:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-compact, .success-compact {
+  font-size: 11px;
+  margin-top: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+
+.error-compact {
+  background: #fee;
+  color: #d00;
+  border: 1px solid #fcc;
+}
+
+.success-compact {
+  background: #efe;
+  color: #060;
+  border: 1px solid #cfc;
+}

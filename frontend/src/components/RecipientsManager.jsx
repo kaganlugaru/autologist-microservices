@@ -12,8 +12,7 @@ const RecipientsManager = () => {
     const [newRecipient, setNewRecipient] = useState({
         name: '',
         username: '',
-        telegram_id: '',
-        keyword: '',
+        category: '',
         active: true
     });
 
@@ -25,10 +24,11 @@ const RecipientsManager = () => {
     const loadRecipients = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/recipients');
+            // Используем новый API endpoint для категорий
+            const response = await fetch('/api/recipient-categories');
             if (response.ok) {
-                const data = await response.json();
-                setRecipients(data);
+                const result = await response.json();
+                setRecipients(result.data || []);
             } else {
                 setError('Ошибка загрузки получателей');
             }
@@ -43,8 +43,8 @@ const RecipientsManager = () => {
         try {
             const response = await fetch('/api/keywords');
             if (response.ok) {
-                const data = await response.json();
-                setKeywords(data);
+                const result = await response.json();
+                setKeywords(result.data || []);
             }
         } catch (err) {
             console.error('Ошибка загрузки ключевых слов:', err);
@@ -54,20 +54,26 @@ const RecipientsManager = () => {
     const addRecipient = async (e) => {
         e.preventDefault();
         
-        // Проверяем обязательные поля
-        if (!newRecipient.name || !newRecipient.telegram_id || !newRecipient.keyword) {
-            setError('Заполните все обязательные поля');
+        // Проверяем обязательные поля (теперь категория вместо конкретного ключевого слова)
+        if (!newRecipient.name || !newRecipient.username || !newRecipient.category) {
+            setError('Заполните все обязательные поля: имя, username, категория');
             return;
         }
 
         try {
             setLoading(true);
-            const response = await fetch('/api/recipients', {
+            // Отправляем данные в новый API endpoint для категорий
+            const response = await fetch('/api/recipient-categories', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(newRecipient),
+                body: JSON.stringify({
+                    name: newRecipient.name,
+                    username: newRecipient.username,
+                    category: newRecipient.category,
+                    active: newRecipient.active
+                }),
             });
 
             if (response.ok) {
@@ -75,8 +81,7 @@ const RecipientsManager = () => {
                 setNewRecipient({
                     name: '',
                     username: '',
-                    telegram_id: '',
-                    keyword: '',
+                    category: '',
                     active: true
                 });
                 loadRecipients();
@@ -94,7 +99,7 @@ const RecipientsManager = () => {
 
     const toggleRecipientActive = async (id, currentStatus) => {
         try {
-            const response = await fetch(`/api/recipients/${id}`, {
+            const response = await fetch(`/api/recipient-categories/${id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -120,7 +125,7 @@ const RecipientsManager = () => {
         }
 
         try {
-            const response = await fetch(`/api/recipients/${id}`, {
+            const response = await fetch(`/api/recipient-categories/${id}`, {
                 method: 'DELETE',
             });
 
@@ -136,22 +141,16 @@ const RecipientsManager = () => {
         }
     };
 
-    // Группируем получателей по пользователям
+    // Группировка получателей по категориям
     const groupedRecipients = recipients.reduce((acc, recipient) => {
-        const key = `${recipient.name}_${recipient.telegram_id}`;
+        const key = recipient.category;
         if (!acc[key]) {
             acc[key] = {
-                name: recipient.name,
-                username: recipient.username,
-                telegram_id: recipient.telegram_id,
-                keywords: []
+                category: recipient.category,
+                recipients: []
             };
         }
-        acc[key].keywords.push({
-            id: recipient.id,
-            keyword: recipient.keyword,
-            active: recipient.active
-        });
+        acc[key].recipients.push(recipient);
         return acc;
     }, {});
 
@@ -178,39 +177,28 @@ const RecipientsManager = () => {
                     </div>
 
                     <div className="form-group">
-                        <label>Username в Telegram</label>
+                        <label>Username в Telegram *</label>
                         <input
                             type="text"
                             value={newRecipient.username}
                             onChange={(e) => setNewRecipient({...newRecipient, username: e.target.value})}
                             placeholder="Например: Rinat575kz (без @)"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Telegram ID *</label>
-                        <input
-                            type="number"
-                            value={newRecipient.telegram_id}
-                            onChange={(e) => setNewRecipient({...newRecipient, telegram_id: e.target.value})}
-                            placeholder="Например: 262700292"
                             required
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>Ключевое слово *</label>
+                        <label>Категория *</label>
                         <select
-                            value={newRecipient.keyword}
-                            onChange={(e) => setNewRecipient({...newRecipient, keyword: e.target.value})}
+                            value={newRecipient.category}
+                            onChange={(e) => setNewRecipient({...newRecipient, category: e.target.value})}
                             required
                         >
-                            <option value="">Выберите ключевое слово</option>
-                            {keywords.map((keyword) => (
-                                <option key={keyword.id} value={keyword.keyword}>
-                                    {keyword.keyword}
-                                </option>
-                            ))}
+                            <option value="">Выберите категорию</option>
+                            <option value="грузоперевозки">Грузоперевозки</option>
+                            <option value="логистика">Логистика</option>
+                            <option value="транспорт">Транспорт</option>
+                            <option value="доставка">Доставка</option>
                         </select>
                     </div>
 
@@ -222,46 +210,41 @@ const RecipientsManager = () => {
 
             {/* Список получателей */}
             <div className="recipients-list">
-                <h3>Текущие получатели ({Object.keys(groupedRecipients).length})</h3>
+                <h3>Получатели по категориям ({Object.keys(groupedRecipients).length})</h3>
                 
                 {loading && <div className="loading">Загрузка...</div>}
                 
-                {Object.values(groupedRecipients).map((user, index) => (
-                    <div key={index} className="recipient-card">
-                        <div className="recipient-header">
-                            <h4>{user.name}</h4>
-                            <div className="recipient-info">
-                                <span>@{user.username || 'не указан'}</span>
-                                <span>ID: {user.telegram_id}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="keywords-list">
-                            <h5>Ключевые слова:</h5>
-                            {user.keywords.map((kw) => (
-                                <div key={kw.id} className="keyword-item">
-                                    <span className={`keyword ${kw.active ? 'active' : 'inactive'}`}>
-                                        {kw.keyword}
-                                    </span>
-                                    <div className="keyword-actions">
-                                        <button
-                                            onClick={() => toggleRecipientActive(kw.id, kw.active)}
-                                            className={kw.active ? 'deactivate' : 'activate'}
-                                            title={kw.active ? 'Отключить' : 'Включить'}
-                                        >
-                                            {kw.active ? '🔴' : '🟢'}
-                                        </button>
-                                        <button
-                                            onClick={() => deleteRecipient(kw.id)}
-                                            className="delete"
-                                            title="Удалить"
-                                        >
-                                            🗑️
-                                        </button>
+                {Object.values(groupedRecipients).map((categoryGroup, index) => (
+                    <div key={index} className="category-group">
+                        <h4>📂 Категория: {categoryGroup.category}</h4>
+                        {categoryGroup.recipients.map((recipient) => (
+                            <div key={recipient.id} className="recipient-card">
+                                <div className="recipient-header">
+                                    <h5>{recipient.name}</h5>
+                                    <div className="recipient-info">
+                                        <span>@{recipient.username || 'не указан'}</span>
+                                        <span className={`status ${recipient.active ? 'active' : 'inactive'}`}>
+                                            {recipient.active ? '✅ Активен' : '❌ Неактивен'}
+                                        </span>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                                
+                                <div className="recipient-actions">
+                                    <button 
+                                        onClick={() => toggleRecipientActive(recipient.id, recipient.active)}
+                                        className={`toggle-btn ${recipient.active ? 'deactivate' : 'activate'}`}
+                                    >
+                                        {recipient.active ? 'Отключить' : 'Включить'}
+                                    </button>
+                                    <button 
+                                        onClick={() => deleteRecipient(recipient.id)}
+                                        className="delete-btn"
+                                    >
+                                        Удалить
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ))}
                 

@@ -167,13 +167,53 @@ class TelegramParser:
             logger.error(f"ОШИБКА: Загрузка чатов: {e}")
 
     async def is_duplicate_message(self, message_hash):
-        """Упрощенная проверка дубликата"""
+        """Улучшенная проверка дубликата с возвратом информации об оригинале"""
         try:
             yesterday = datetime.now() - timedelta(days=1)
-            response = self.supabase.table('messages').select('id').eq('content_hash', message_hash).gte('created_at', yesterday.isoformat()).limit(1).execute()
-            return len(response.data) > 0
+            response = self.supabase.table('messages').select('id, message_text, chat_name, username, created_at').eq('content_hash', message_hash).gte('created_at', yesterday.isoformat()).limit(1).execute()
+            
+            if len(response.data) > 0:
+                # Возвращаем информацию об оригинальном сообщении
+                return {
+                    'is_duplicate': True,
+                    'original_message': response.data[0]
+                }
+            else:
+                return {'is_duplicate': False}
+                
         except Exception as e:
             logger.error(f"ОШИБКА: Проверка дубликата: {e}")
+            return {'is_duplicate': False}
+
+    async def save_duplicate_info(self, original_message_id, message_data, sender_info):
+        """Сохранение информации о дубликате"""
+        try:
+            duplicate_data = {
+                'original_message_id': original_message_id,
+                'duplicate_chat_id': message_data['chat_id'],
+                'duplicate_chat_name': message_data['chat_name'],
+                'duplicate_user_id': message_data['user_id'],
+                'duplicate_message_id': message_data['message_id'],
+                'content_hash': message_data['content_hash'],
+                'detected_at': datetime.now().isoformat()
+            }
+            
+            # Добавляем информацию о пользователе если есть
+            if sender_info:
+                if sender_info.get('username'):
+                    duplicate_data['duplicate_username'] = sender_info['username']
+                if sender_info.get('first_name'):
+                    duplicate_data['duplicate_user_first_name'] = sender_info['first_name']
+                if sender_info.get('last_name'):
+                    duplicate_data['duplicate_user_last_name'] = sender_info['last_name']
+            
+            # Сохраняем в БД
+            response = self.supabase.table('message_duplicates').insert(duplicate_data).execute()
+            logger.info(f"ДУБЛИКАТ: Информация сохранена для оригинала ID {original_message_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"ОШИБКА: Сохранение дубликата: {e}")
             return False
 
     async def save_message(self, message_data):
@@ -309,23 +349,60 @@ class TelegramParser:
             }
 
     def extract_phone_numbers(self, text):
-        """Извлечение номеров телефонов из текста"""
-        # Паттерны для различных форматов номеров
+        """Извлечение номеров телефонов из текста с улучшенной логикой"""
+        # Улучшенные паттерны для различных форматов номеров
         phone_patterns = [
-            r'\+7\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}',  # +7 999 999 99 99
-            r'\+7\d{10}',  # +79999999999
-            r'8\s?\d{3}\s?\d{3}\s?\d{2}\s?\d{2}',  # 8 999 999 99 99
-            r'8\d{10}',  # 89999999999
-            r'\+\d{1,3}\s?\d{7,15}',  # Международные номера
-            r'\d{3}[-\s]?\d{3}[-\s]?\d{4}',  # 999-999-9999 или 999 999 9999
+            # Российские номера с +7
+            r'\+7[- ]?\d{3}[- ]?\d{3}[- ]?\d{2}[- ]?\d{2}',
+            r'\+7\d{10}',
+            
+            # Российские номера с 8 (проверяем что следующие цифры не цена)
+            r'8[- ]?\d{3}[- ]?\d{3}[- ]?\d{2}[- ]?\d{2}(?!\d)',
+            
+            # Международные номера (минимум 10 цифр, начинаются с +)
+            r'\+\d{1,3}[- ]?\d{3,4}[- ]?\d{3,4}[- ]?\d{2,4}',
+            
+            # Прочие форматы (только если минимум 10 цифр)
+            r'(?<!\d)\d{3}[- ]?\d{3}[- ]?\d{4}(?!\d)',  # 999-999-9999
         ]
         
         phone_numbers = []
         for pattern in phone_patterns:
             matches = re.findall(pattern, text)
-            phone_numbers.extend(matches)
+            for match in matches:
+                # Очищаем номер от лишних символов
+                clean_number = re.sub(r'[^\d+]', '', match)
+                
+                # Проверяем валидность номера
+                if self.is_valid_phone_number(clean_number):
+                    phone_numbers.append(match)
         
         return list(set(phone_numbers))  # Убираем дубликаты
+
+    def is_valid_phone_number(self, phone):
+        """Проверка что номер телефона валидный (не цена)"""
+        # Убираем все кроме цифр и +
+        clean = re.sub(r'[^\d+]', '', phone)
+        
+        # Минимум 10 цифр для валидного номера
+        digit_count = len(re.sub(r'[^\d]', '', clean))
+        if digit_count < 10:
+            return False
+            
+        # Максимум 15 цифр (международный стандарт)
+        if digit_count > 15:
+            return False
+            
+        # Если начинается с +, должно быть минимум 11 символов
+        if clean.startswith('+') and len(clean) < 11:
+            return False
+            
+        # Проверяем что это не цена (цены обычно 4-6 цифр)
+        # Номера телефонов редко начинаются с 0
+        if clean.startswith('0'):
+            return False
+            
+        return True
 
     def format_phone_for_telegram(self, phone):
         """Форматирование номера телефона для Telegram ссылки"""
@@ -458,9 +535,33 @@ class TelegramParser:
                         logger.info(f"НОВОЕ СООБЩЕНИЕ: Хеш для дедупликации: {message_hash[:12]}...")
                         
                         # Проверяем на дубликат
-                        if await self.is_duplicate_message(message_hash):
+                        duplicate_check = await self.is_duplicate_message(message_hash)
+                        if duplicate_check['is_duplicate']:
                             self.stats['duplicates'] += 1
+                            
+                            # Получаем информацию об отправителе дубликата
+                            sender_info = await self.get_sender_info(event.message)
+                            
+                            # Сохраняем информацию о дубликате
+                            original_id = duplicate_check['original_message']['id']
+                            message_data = {
+                                'chat_id': event.chat_id,
+                                'chat_name': event.chat.title or 'Unknown',
+                                'user_id': event.message.sender_id,
+                                'message_id': event.message.id,
+                                'content_hash': message_hash
+                            }
+                            
+                            await self.save_duplicate_info(original_id, message_data, sender_info)
+                            
+                            # Логируем подробную информацию
+                            original = duplicate_check['original_message']
+                            current_chat = event.chat.title or 'Unknown'
+                            current_user = sender_info.get('display_name', 'Unknown') if sender_info else 'Unknown'
+                            
                             logger.info(f"ДУБЛИКАТ: Сообщение отклонено (хеш: {message_hash[:8]}...)")
+                            logger.info(f"ДУБЛИКАТ: Оригинал из '{original['chat_name']}' от {original.get('username', 'Unknown')}")
+                            logger.info(f"ДУБЛИКАТ: Дубликат из '{current_chat}' от {current_user}")
                             return
                         
                         # Обрабатываем новое сообщение

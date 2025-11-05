@@ -75,7 +75,7 @@ class DatabaseManager {
   /**
    * Получить последние сообщения
    */
-  async getRecentMessages(limit = 50) {
+  async getRecentMessages(limit = 1000) {
     try {
       const { data, error } = await this.supabase
         .from('messages')
