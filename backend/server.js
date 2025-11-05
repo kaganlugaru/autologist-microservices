@@ -7,7 +7,7 @@ const path = require('path');
 require('dotenv').config();
 
 // Импорт общего модуля для работы с БД
-const DatabaseManager = require('../shared/database');
+const DatabaseManager = require('./shared/database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;

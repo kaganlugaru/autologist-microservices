@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: autologist-backend-fixed
+    name: autologist-backend
     env: node
     plan: free
-    buildCommand: npm install --prefix shared && npm install --prefix backend
-    startCommand: cd backend && npm start
+    buildCommand: npm install
+    startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
