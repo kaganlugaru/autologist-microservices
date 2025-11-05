@@ -3,12 +3,13 @@ module.exports = {
     {
       name: 'autologist-backend',
       script: './backend/server.js',
-      cwd: '/opt/autologist-microservices',
+      cwd: __dirname,
       env: {
         NODE_ENV: 'production',
         PORT: 3001
       },
       instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
@@ -19,9 +20,9 @@ module.exports = {
     },
     {
       name: 'telegram-parser',
-      script: './telegram-parser/venv/bin/python',
-      args: './telegram-parser/telegram_parser.py',
-      cwd: '/opt/autologist-microservices',
+      script: './telegram-parser/telegram_parser.py',
+      cwd: __dirname,
+      interpreter: 'python',
       instances: 1,
       autorestart: true,
       watch: false,
@@ -31,9 +32,9 @@ module.exports = {
       log_file: './logs/parser-combined.log',
       time: true,
       env: {
-        PYTHONPATH: '/opt/autologist-microservices/telegram-parser',
+        PYTHONPATH: './telegram-parser',
         PYTHONUNBUFFERED: '1'
       }
     }
   ]
-}
+};

@@ -20,6 +20,31 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// ===== HEALTH CHECK =====
+
+// Health check endpoint для мониторинга
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    version: '1.0.0',
+    service: 'autologist-backend'
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: '🤖 Autologist Backend API',
+    version: '1.0.0',
+    health: '/api/health',
+    docs: '/api/',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ===== API ENDPOINTS =====
 
 // Проверка статуса сервера
@@ -1054,11 +1079,14 @@ async function startServer() {
     }
     
     // Запуск сервера
-    app.listen(PORT, () => {
+    // Запуск сервера на всех интерфейсах для Render.com
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('🚀 Autologist Backend запущен');
       console.log(`📡 API: http://localhost:${PORT}/api/`);
+      console.log(`🌍 External: http://0.0.0.0:${PORT}/api/`);
       console.log(`✅ База данных: подключена`);
       console.log(`⏰ Время запуска: ${new Date().toLocaleString()}`);
+      console.log(`🔍 Health check: http://localhost:${PORT}/api/health`);
     });
     
   } catch (error) {
