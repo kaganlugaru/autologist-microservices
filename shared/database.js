@@ -1,7 +1,5 @@
 // shared/database.js
 // Общий модуль для работы с Supabase базой данных
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', 'backend', '.env') });
 const { createClient } = require('@supabase/supabase-js');
 
 class DatabaseManager {
