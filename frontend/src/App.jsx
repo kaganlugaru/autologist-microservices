@@ -5,7 +5,8 @@ import Statistics from './components/Statistics';
 import TelegramChatManager from './components/TelegramChatManager';
 import './App.css';
 
-const API_BASE = 'http://localhost:3001/api';
+// Получаем URL бэкенда из переменных окружения или используем локальный для разработки
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 function App() {
   const [activeTab, setActiveTab] = useState('messages');

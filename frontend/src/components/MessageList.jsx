@@ -18,7 +18,7 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
     setLoadingDuplicates(prev => ({ ...prev, [messageId]: true }));
     
     try {
-      const response = await fetch(`/api/messages/${messageId}/duplicates`);
+      const response = await fetch(`${apiBase}/messages/${messageId}/duplicates`);
       const result = await response.json();
       
       if (result.success) {
