@@ -1,0 +1,50 @@
+{
+  "name": "autologist-microservices",
+  "version": "1.0.0",
+  "description": "Система анализа сообщений автосервиса",
+  "scripts": {
+    "install:all": "npm run install:backend && npm run install:frontend && npm run install:parser",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:parser": "cd telegram-parser && pip install -r requirements.txt",
+    
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:parser\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "dev:parser": "cd telegram-parser && python telegram_parser.py",
+    
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    
+    "start": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop all",
+    "restart": "pm2 restart all",
+    "status": "pm2 status",
+    "logs": "pm2 logs",
+    "monit": "pm2 monit",
+    
+    "test": "npm run test:backend",
+    "test:backend": "cd backend && npm test",
+    "test:db": "cd backend && node test-connection.js",
+    
+    "update": "git pull origin main && npm run install:all && npm run build",
+    "deploy": "npm run build && pm2 restart all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "telegram",
+    "whatsapp", 
+    "parser",
+    "microservices",
+    "analytics",
+    "autologist"
+  ],
+  "author": "Autologist Team",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

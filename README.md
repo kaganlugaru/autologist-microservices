@@ -1,234 +1,464 @@
-# 🚀 Autologist Microservices# 🚀 Autologist Microservices
+# 🤖 Autologist - Система анализа сообщений автосервиса# 🚀 Autologist Microservices# 🚀 Autologist Microservices
 
 
+
+## 📋 Описание
+
+Комплексная система микросервисов для автоматического анализа и обработки сообщений клиентов автосервиса через Telegram и WhatsApp с интеллектуальной аналитикой.
 
 > Автоматизированная система мониторинга и анализа Telegram сообщений с веб-интерфейсом> Автоматизированная система мониторинга и анализа Telegram сообщений с веб-интерфейсом
 
+## 🏗️ Архитектура системы
 
+```
 
-## 📋 Описание## 📋 Описание
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 
+│   🖥️ Frontend   │    │   ⚙️ Backend    │    │  🗄️ Database   │## 📋 Описание## 📋 Описание
 
+│   React SPA     │◄──►│   Node.js API   │◄──►│   PostgreSQL    │
 
-Autologist - это микросервисная система для:Autologist - это микросервисная система для:
+│   Port: 3000    │    │   Port: 3001    │    │   (Supabase)    │
 
-- 📱 **Мониторинга Telegram чатов** в реальном времени- 📱 **Мониторинга Telegram чатов** в реальном времени
+└─────────────────┘    └─────────────────┘    └─────────────────┘
 
-- 🔍 **Фильтрации сообщений** по ключевым словам- 🔍 **Фильтрации сообщений** по ключевым словам
+         ▲                       ▲Autologist - это микросервисная система для:Autologist - это микросервисная система для:
 
-- 📊 **Анализа и статистики** сообщений- � **Анализа и статистики** сообщений
+         │                       │
 
-- 🌐 **Веб-интерфейса** для управления и просмотра- 🌐 **Веб-интерфейса** для управления и просмотра
+         ▼                       ▼- 📱 **Мониторинга Telegram чатов** в реальном времени- 📱 **Мониторинга Telegram чатов** в реальном времени
 
-- 🔔 **Уведомлений** важных сообщений- 🔔 **Уведомлений** важных сообщений
+┌─────────────────┐    ┌─────────────────┐
 
+│ 📱 Telegram     │    │ 💬 WhatsApp     │- 🔍 **Фильтрации сообщений** по ключевым словам- 🔍 **Фильтрации сообщений** по ключевым словам
 
+│ Parser (Python) │    │ Parser (Python) │
 
-## 🏗️ Архитектура## 🏗️ Архитектура
+│ 24/7 мониторинг │    │ 24/7 мониторинг │- 📊 **Анализа и статистики** сообщений- � **Анализа и статистики** сообщений
 
+└─────────────────┘    └─────────────────┘
 
-
-``````
-
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-
-│   Frontend      │    │    Backend      │    │ Telegram Parser ││   Frontend      │    │    Backend      │    │ Telegram Parser │
-
-│   React + Vite  │◄──►│   Node.js API   │◄──►│     Python      ││   React + Vite  │◄──►│   Node.js API   │◄──►│     Python      │
-
-│   Port: 5173    │    │   Port: 3001    │    │   Background    ││   Port: 5173    │    │   Port: 3001    │    │   Background    │
-
-└─────────────────┘    └─────────────────┘    └─────────────────┘└─────────────────┘    └─────────────────┘    └─────────────────┘
-
-          │                       │                       │          │                       │                       │
-
-          └───────────────────────┼───────────────────────┘          └───────────────────────┼───────────────────────┘
-
-                                  ▼                                  ▼
-
-                          ┌─────────────────┐                          ┌─────────────────┐
-
-                          │ Supabase DB     │                          │ Supabase DB     │
-
-                          │ Cloud Database  │                          │ Cloud Database  │
-
-                          └─────────────────┘                          └─────────────────┘
-
-``````
+```- 🌐 **Веб-интерфейса** для управления и просмотра- 🌐 **Веб-интерфейса** для управления и просмотра
 
 
 
-## ⚡ Быстрый старт## ⚡ Быстрый старт
+## ✨ Ключевые возможности- 🔔 **Уведомлений** важных сообщений- 🔔 **Уведомлений** важных сообщений
+
+- 🔄 **Реальное время**: Автоматическая обработка сообщений 24/7
+
+- 📊 **Аналитика**: Детальная статистика и метрики
+
+- 🎯 **Умная фильтрация**: Определение типов запросов и приоритетов
+
+- 📱 **Мульти-платформа**: Поддержка Telegram и WhatsApp## 🏗️ Архитектура## 🏗️ Архитектура
+
+- 🚀 **Автоматизация**: Рассылка уведомлений и ответов
+
+- 🔒 **Безопасность**: Защищенное хранение данных
 
 
 
-### Автоматический запуск (рекомендуется):### Автоматический запуск (рекомендуется):
-
-```bash```bash
-
-# Запустить все сервисы# Запустить все сервисы
-
-START.batSTART.bat
+## 🚀 Быстрый старт``````
 
 
+
+### Системные требования┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+
+- **Node.js** 18+ 
+
+- **Python** 3.8+│   Frontend      │    │    Backend      │    │ Telegram Parser ││   Frontend      │    │    Backend      │    │ Telegram Parser │
+
+- **Git** для версий
+
+- **PM2** для продакшена│   React + Vite  │◄──►│   Node.js API   │◄──►│     Python      ││   React + Vite  │◄──►│   Node.js API   │◄──►│     Python      │
+
+
+
+### 1️⃣ Установка│   Port: 5173    │    │   Port: 3001    │    │   Background    ││   Port: 5173    │    │   Port: 3001    │    │   Background    │
+
+```bash
+
+# Клонируем репозиторий└─────────────────┘    └─────────────────┘    └─────────────────┘└─────────────────┘    └─────────────────┘    └─────────────────┘
+
+git clone https://github.com/your-repo/autologist-microservices.git
+
+cd autologist-microservices          │                       │                       │          │                       │                       │
+
+
+
+# Устанавливаем зависимости всех сервисов          └───────────────────────┼───────────────────────┘          └───────────────────────┼───────────────────────┘
+
+npm run install:all
+
+```                                  ▼                                  ▼
+
+
+
+### 2️⃣ Конфигурация                          ┌─────────────────┐                          ┌─────────────────┐
+
+```bash
+
+# Копируем примеры конфигураций                          │ Supabase DB     │                          │ Supabase DB     │
+
+cp backend/.env.example backend/.env
+
+cp telegram-parser/.env.example telegram-parser/.env                          │ Cloud Database  │                          │ Cloud Database  │
+
+
+
+# Редактируем настройки базы данных и API ключи                          └─────────────────┘                          └─────────────────┘
+
+# backend/.env - настройки Supabase
+
+# telegram-parser/.env - токены Telegram``````
+
+```
+
+
+
+### 3️⃣ Запуск для разработки
+
+```bash## ⚡ Быстрый старт## ⚡ Быстрый старт
+
+# Запускаем все сервисы одновременно
+
+npm run dev
+
+
+
+# Или каждый сервис отдельно:### Автоматический запуск (рекомендуется):### Автоматический запуск (рекомендуется):
+
+npm run dev:frontend   # http://localhost:3000
+
+npm run dev:backend    # http://localhost:3001```bash```bash
+
+npm run dev:parser     # Python скрипт
+
+```# Запустить все сервисы# Запустить все сервисы
+
+
+
+### 4️⃣ Запуск в продакшенеSTART.batSTART.bat
+
+```bash
+
+# Устанавливаем PM2 глобально
+
+npm install -g pm2
 
 # Проверить статус# Проверить статус
 
-STATUS.batSTATUS.bat
+# Запускаем все сервисы через PM2
+
+pm2 start ecosystem.config.jsSTATUS.batSTATUS.bat
 
 
 
-# Остановить все сервисы# Остановить все сервисы
+# Сохраняем конфигурацию для автозапуска
+
+pm2 save
+
+pm2 startup# Остановить все сервисы# Остановить все сервисы
+
+```
 
 STOP.batSTOP.bat
 
+## 🛠️ Управление системой
+
 ``````
 
+### Быстрые команды (Windows)
+
+```bash
+
+# Мониторинг системы
+
+monitor.bat### Ручной запуск:### Ручной запуск:
 
 
-### Ручной запуск:### Ручной запуск:
 
-```bash```bash
+# Автоматическое обновление```bash```bash
+
+update.bat
 
 # Backend# Backend
 
-cd backend && npm startcd backend && npm start
+# Просмотр логов
+
+pm2 logscd backend && npm startcd backend && npm start
 
 
 
-# Frontend  # Frontend  
+# Статус сервисов
 
-cd frontend && npm run devcd frontend && npm run dev
+pm2 status
+
+```# Frontend  # Frontend  
 
 
+
+### Основные URLcd frontend && npm run devcd frontend && npm run dev
+
+- **Панель управления**: http://localhost:3000
+
+- **API документация**: http://localhost:3001/api/status
+
+- **Мониторинг PM2**: `pm2 monit`
 
 # Telegram Parser# Telegram Parser
 
-cd telegram-parser && python telegram_parser.pycd telegram-parser && python telegram_parser.py
+## 📁 Структура проекта
 
-``````
+```cd telegram-parser && python telegram_parser.pycd telegram-parser && python telegram_parser.py
+
+autologist-microservices/
+
+├── 🖥️ frontend/          # React приложение``````
+
+│   ├── src/components/   # Компоненты интерфейса
+
+│   ├── src/styles/       # CSS стили
+
+│   └── public/           # Статические файлы
+
+├── ⚙️ backend/           # Node.js API сервер## 🌐 Доступ к системе## 🌐 Доступ к системе
+
+│   ├── routes/           # API маршруты
+
+│   ├── middleware/       # Промежуточное ПО
+
+│   └── utils/            # Утилиты
+
+├── 📱 telegram-parser/   # Python парсер TelegramПосле запуска доступно:После запуска доступно:
+
+│   ├── parsers/          # Логика парсинга
+
+│   ├── utils/            # Вспомогательные функции- **🖥️ Dashboard**: http://localhost:5173- **🖥️ Dashboard**: http://localhost:5173
+
+│   └── requirements.txt  # Python зависимости
+
+├── 💬 whatsapp-parser/   # Python парсер WhatsApp- **🔧 API**: http://localhost:3001- **🔧 API**: http://localhost:3001
+
+├── 🗄️ shared/            # Общие компоненты
+
+│   └── database.js       # Подключение к БД- **📱 Parser**: Работает в фоне- **📱 Parser**: Работает в фоне
+
+├── 📋 ecosystem.config.js # Конфигурация PM2
+
+├── 🔧 update.bat         # Скрипт обновления
+
+├── 📊 monitor.bat        # Монитор системы
+
+└── 📚 docs/              # Документация## 🛠️ Технологии## 🛠️ Технологии
+
+```
 
 
 
-## 🌐 Доступ к системе## 🌐 Доступ к системе
-
-
-
-После запуска доступно:После запуска доступно:
-
-- **🖥️ Dashboard**: http://localhost:5173- **🖥️ Dashboard**: http://localhost:5173
-
-- **🔧 API**: http://localhost:3001- **🔧 API**: http://localhost:3001
-
-- **📱 Parser**: Работает в фоне- **📱 Parser**: Работает в фоне
-
-
-
-## 🛠️ Технологии## 🛠️ Технологии
-
-
+## 🔧 Конфигурация
 
 ### Frontend:### Frontend:
 
-- **React 19** - UI библиотека- **React 19** - UI библиотека
+### Backend (.env)
 
-- **Vite** - Сборщик и dev-сервер- **Vite** - Сборщик и dev-сервер
+```env- **React 19** - UI библиотека- **React 19** - UI библиотека
 
-- **Axios** - HTTP клиент- **Axios** - HTTP клиент
+# Supabase конфигурация
 
-- **Recharts** - Графики и аналитика- **Recharts** - Графики и аналитика
+SUPABASE_URL=your_supabase_url- **Vite** - Сборщик и dev-сервер- **Vite** - Сборщик и dev-сервер
+
+SUPABASE_ANON_KEY=your_anon_key
+
+PORT=3001- **Axios** - HTTP клиент- **Axios** - HTTP клиент
+
+NODE_ENV=production
+
+```- **Recharts** - Графики и аналитика- **Recharts** - Графики и аналитика
 
 
 
-### Backend:### Backend:
+### Telegram Parser (.env)
 
-- **Node.js** - Runtime- **Node.js** - Runtime
+```env
+
+# Telegram API### Backend:### Backend:
+
+TELEGRAM_API_ID=your_api_id
+
+TELEGRAM_API_HASH=your_api_hash- **Node.js** - Runtime- **Node.js** - Runtime
+
+TELEGRAM_PHONE=your_phone_number
 
 - **Express** - Web framework- **Express** - Web framework
 
-- **Supabase** - Cloud база данных- **Supabase** - Cloud база данных
+# Database
+
+DATABASE_URL=your_database_url- **Supabase** - Cloud база данных- **Supabase** - Cloud база данных
+
+```
 
 - **CORS** - Cross-origin requests- **CORS** - Cross-origin requests
 
+## 📊 Мониторинг и логи
 
 
-### Parser:### Parser:
 
-- **Python 3** - Основной язык- **Python 3** - Основной язык
+### PM2 мониторинг
 
-- **Telethon** - Telegram клиент- **Telethon** - Telegram клиент
+```bash### Parser:### Parser:
+
+# Просмотр статуса всех процессов
+
+pm2 status- **Python 3** - Основной язык- **Python 3** - Основной язык
+
+
+
+# Мониторинг в реальном времени- **Telethon** - Telegram клиент- **Telethon** - Telegram клиент
+
+pm2 monit
 
 - **Supabase Python** - Клиент БД- **Supabase Python** - Клиент БД
 
+# Просмотр логов
+
+pm2 logs [service_name]
 
 
-## 📁 Структура проекта## 📁 Структура проекта
+
+# Перезапуск сервиса## 📁 Структура проекта## 📁 Структура проекта
+
+pm2 restart [service_name]
+
+```
 
 
 
-``````
+### Логи системы``````
 
-autologist-microservices/autologist-microservices/
+- **Backend**: `~/.pm2/logs/autologist-backend-*.log`
+
+- **Parser**: `~/.pm2/logs/telegram-parser-*.log`autologist-microservices/autologist-microservices/
+
+- **Errors**: `~/.pm2/logs/*-error.log`
 
 ├── 🚀 START.bat              # Автозапуск всех сервисов├── 🚀 START.bat              # Автозапуск всех сервисов
 
+## 🚨 Устранение проблем
+
 ├── 🛑 STOP.bat               # Остановка всех сервисов  ├── 🛑 STOP.bat               # Остановка всех сервисов  
 
-├── 📊 STATUS.bat             # Проверка статуса├── 📊 STATUS.bat             # Проверка статуса
+### Частые проблемы
 
-├── ├── 
+1. **Порт 3000/3001 занят**: Проверьте `netstat -an | find "3000"`├── 📊 STATUS.bat             # Проверка статуса├── 📊 STATUS.bat             # Проверка статуса
+
+2. **PM2 не запускается**: Переустановите `npm install -g pm2`
+
+3. **Python ошибки**: Проверьте виртуальное окружение `venv`├── ├── 
+
+4. **База данных недоступна**: Проверьте настройки Supabase
 
 ├── backend/                  # 🔧 Node.js API сервер├── backend/                  # 🔧 Node.js API сервер
 
-│   ├── server.js│   ├── server.js
+### Диагностика
 
-│   ├── package.json│   ├── package.json
+```bash│   ├── server.js│   ├── server.js
 
-│   └── .env│   └── .env
+# Проверка системы
 
-├── ├── 
+node --version│   ├── package.json│   ├── package.json
+
+python --version
+
+pm2 --version│   └── .env│   └── .env
+
+
+
+# Тест подключения к БД├── ├── 
+
+npm run test:db
 
 ├── frontend/                 # 🌐 React интерфейс├── frontend/                 # 🌐 React интерфейс
 
-│   ├── src/│   ├── src/
+# Проверка API
+
+curl http://localhost:3001/api/status│   ├── src/│   ├── src/
+
+```
 
 │   ├── package.json│   ├── package.json
 
+## 🔄 Обновление системы
+
 │   └── vite.config.js│   └── vite.config.js
 
-├── ├── 
+### Автоматическое обновление
 
-├── telegram-parser/          # 📱 Python парсер├── telegram-parser/          # 📱 Python парсер
+```bash├── ├── 
+
+# Запускаем скрипт обновления
+
+./update.bat├── telegram-parser/          # 📱 Python парсер├── telegram-parser/          # 📱 Python парсер
+
+```
 
 │   ├── telegram_parser.py│   ├── telegram_parser.py
 
-│   └── .env│   └── .env
+### Ручное обновление
 
-└── └── 
+```bash│   └── .env│   └── .env
 
-└── shared/                   # 🔗 Общие компоненты└── shared/                   # 🔗 Общие компоненты
+# Останавливаем сервисы
+
+pm2 stop all└── └── 
+
+
+
+# Получаем обновления└── shared/                   # 🔗 Общие компоненты└── shared/                   # 🔗 Общие компоненты
+
+git pull origin main
 
     └── database.js    └── database.js
 
-``````
+# Обновляем зависимости
+
+npm install --production``````
 
 
 
-## ⚙️ Настройка## ⚙️ Настройка
+# Запускаем сервисы
+
+pm2 start ecosystem.config.js
+
+```## ⚙️ Настройка## ⚙️ Настройка
 
 
 
-### 1. Supabase:### 1. Supabase:
+## 📚 Документация
+
+- **Техническая документация**: `TECHNICAL_DOCS.md`
+
+- **Руководство по развертыванию**: `PRODUCTION_DEPLOYMENT_GUIDE.md`### 1. Supabase:### 1. Supabase:
+
+- **API документация**: `backend/API_DOCS.md`
 
 - Создайте проект на [supabase.com](https://supabase.com)- Создайте проект на [supabase.com](https://supabase.com)
 
-- Получите URL и API ключи- Получите URL и API ключи
+## 🤝 Поддержка
 
-- Выполните SQL миграции из `setup_database.sql`- Выполните SQL миграции из `setup_database.sql`
+Для получения помощи:- Получите URL и API ключи- Получите URL и API ключи
+
+1. Проверьте логи: `pm2 logs`
+
+2. Запустите диагностику: `monitor.bat`- Выполните SQL миграции из `setup_database.sql`- Выполните SQL миграции из `setup_database.sql`
+
+3. Изучите документацию в папке `docs/`
 
 
 
-### 2. Переменные окружения:### 2. Переменные окружения:
+---
+
+🚀 **Autologist** - Автоматизация работы с клиентами автосервиса### 2. Переменные окружения:### 2. Переменные окружения:
 
 ```bash```bash
 
