@@ -751,7 +751,7 @@ app.get('/api/telegram/chats', async (req, res) => {
     
     console.log('🚀 Запуск Python процесса...');
     
-    const pythonProcess = spawn('python', [pythonScript], {
+    const pythonProcess = spawn('python3', [pythonScript], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),
       env: { ...process.env }
     });
