@@ -105,10 +105,9 @@ class TelegramParser:
             # Проверяем существование файла сессии
             session_file = f"{self.session_name}.session"
             if not os.path.exists(session_file):
-                logger.warning("⚠️ Файл сессии не найден, пытаемся создать новую сессию...")
-                success = asyncio.run(self.create_session_from_env())
-                if not success:
-                    raise Exception("Не удалось создать сессию Telegram")
+                logger.error("❌ Файл сессии не найден")
+                logger.error("💡 Сессия должна быть создана до инициализации парсера")
+                raise Exception("Файл сессии не найден")
             
             # Создаем клиент Telegram
             self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
@@ -879,6 +878,24 @@ async def main():
     """Главная функция"""
     parser = None
     try:
+        # Проверяем и создаем сессию если нужно
+        session_name = os.getenv('TELEGRAM_SESSION_NAME', 'autologist_session')
+        session_file = f"{session_name}.session"
+        
+        if not os.path.exists(session_file):
+            logger.warning("⚠️ Файл сессии не найден, пытаемся создать...")
+            
+            # Создаем временный парсер только для создания сессии
+            temp_parser = TelegramParser.__new__(TelegramParser)
+            temp_parser.session_name = session_name
+            temp_parser.api_id = os.getenv('TELEGRAM_API_ID')
+            temp_parser.api_hash = os.getenv('TELEGRAM_API_HASH')
+            
+            success = await temp_parser.create_session_from_env()
+            if not success:
+                logger.error("❌ Не удалось создать сессию")
+                return
+        
         parser = TelegramParser()
         await parser.start_monitoring()
     except KeyboardInterrupt:
