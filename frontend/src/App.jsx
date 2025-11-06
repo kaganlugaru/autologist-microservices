@@ -16,6 +16,7 @@ function App() {
   const [keywords, setKeywords] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
   // Загрузка данных
   const loadData = async () => {
@@ -37,6 +38,7 @@ function App() {
       ).filter(kw => kw.length > 0);
       setKeywords(keywordStrings);
       setStats(statsRes.data.data || {});
+      setLastUpdateTime(new Date()); // Обновляем время
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
     } finally {
@@ -66,12 +68,12 @@ function App() {
         </div>
         <div className="app-actions">
           <div className="status-indicator">
-            <span className="status-dot"></span>
-            {loading ? 'Загрузка...' : 'ЗАГРУЗКА'}
+            🕐 Последнее обновление: {lastUpdateTime.toLocaleTimeString('ru-RU', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              second: '2-digit'
+            })}
           </div>
-          <button onClick={loadData} className="refresh-btn" disabled={loading}>
-            🔄 Обновить
-          </button>
         </div>
       </header>
 

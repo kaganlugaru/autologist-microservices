@@ -29,17 +29,12 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
   const loadAvailableChats = async () => {
     try {
       setLoadingChats(true);
-      console.log('Загрузка чатов из:', `${apiBase}/telegram/chats`);
       const response = await axios.get(`${apiBase}/telegram/chats`);
-      console.log('Ответ сервера:', response.data);
       const data = response.data?.data || [];
       setAvailableChats(data);
-      console.log('Загружено чатов:', data.length);
     } catch (error) {
       console.error('Ошибка загрузки доступных чатов:', error);
-      console.error('Статус ошибки:', error.response?.status);
-      console.error('Данные ошибки:', error.response?.data);
-      alert(`Ошибка при загрузке чатов: ${error.response?.data?.message || error.message}`);
+      alert('Ошибка при загрузке чатов из аккаунта');
       setAvailableChats([]);
     } finally {
       setLoadingChats(false);
@@ -73,18 +68,14 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
   // Переключить статус отслеживаемого чата
   const toggleMonitoredChat = async (chatId, currentActive) => {
     try {
-      console.log('Изменение статуса чата:', chatId, 'на', !currentActive);
-      const response = await axios.patch(`${apiBase}/chats/${chatId}`, {
+      await axios.patch(`${apiBase}/chats/${chatId}`, {
         active: !currentActive
       });
-      console.log('Ответ сервера при изменении статуса:', response.data);
       loadMonitoredChats();
       onUpdate?.();
     } catch (error) {
       console.error('Ошибка изменения статуса чата:', error);
-      console.error('Статус ошибки:', error.response?.status);
-      console.error('Данные ошибки:', error.response?.data);
-      alert(`Ошибка при изменении статуса чата: ${error.response?.data?.message || error.message}`);
+      alert('Ошибка при изменении статуса чата');
     }
   };
 
@@ -93,16 +84,12 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
     if (!window.confirm('Удалить чат из мониторинга?')) return;
 
     try {
-      console.log('Удаление чата с ID:', chatId);
-      const response = await axios.delete(`${apiBase}/chats/${chatId}`);
-      console.log('Ответ сервера при удалении:', response.data);
+      await axios.delete(`${apiBase}/chats/${chatId}`);
       loadMonitoredChats();
       onUpdate?.();
     } catch (error) {
       console.error('Ошибка удаления чата:', error);
-      console.error('Статус ошибки:', error.response?.status);
-      console.error('Данные ошибки:', error.response?.data);
-      alert(`Ошибка при удалении чата: ${error.response?.data?.message || error.message}`);
+      alert('Ошибка при удалении чата');
     }
   };
 

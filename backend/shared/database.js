@@ -161,8 +161,8 @@ class DatabaseManager {
     try {
       let query = this.supabase
         .from('monitored_chats')
-        .select('*')
-        .eq('active', true);
+        .select('*');
+        // Убираем фильтр .eq('active', true) чтобы показывать ВСЕ чаты
 
       if (platform) {
         query = query.eq('platform', platform);

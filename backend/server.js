@@ -505,6 +505,59 @@ app.post('/api/chats', async (req, res) => {
   }
 });
 
+// Обновить чат (изменить статус активности)
+app.patch('/api/chats/:id', async (req, res) => {
+  try {
+    const chatId = req.params.id;
+    const updateData = req.body;
+    
+    const { data, error } = await db.supabase
+      .from('monitored_chats')
+      .update(updateData)
+      .eq('id', chatId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      data: data
+    });
+  } catch (error) {
+    console.error('Ошибка обновления чата:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Удалить чат из отслеживания
+app.delete('/api/chats/:id', async (req, res) => {
+  try {
+    const chatId = req.params.id;
+    
+    const { error } = await db.supabase
+      .from('monitored_chats')
+      .delete()
+      .eq('id', chatId);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: 'Чат удален из мониторинга'
+    });
+  } catch (error) {
+    console.error('Ошибка удаления чата:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // ===== ОБЪЯВЛЕНИЯ =====
 
 // Получить объявления
@@ -589,59 +642,79 @@ app.get('/api/stats', async (req, res) => {
 // Получить доступные чаты из Telegram
 app.get('/api/telegram/chats', async (req, res) => {
   try {
-    // Пока возвращаем заглушку, так как нужна авторизация Telegram
-    const availableChats = [
-      {
-        id: '-1001208543145',
-        title: 'Груз Украина',
-        participantsCount: 15234,
-        type: 'supergroup',
-        accessible: true
-      },
-      {
-        id: '-1001254956843',
-        title: 'Логистика Европа', 
-        participantsCount: 8765,
-        type: 'supergroup',
-        accessible: true
-      },
-      {
-        id: '-1001627973435',
-        title: 'Автобазар',
-        participantsCount: 23456,
-        type: 'supergroup',
-        accessible: true
-      },
-      {
-        id: '-1001631736811',
-        title: 'Дальнобой Форум',
-        participantsCount: 12890,
-        type: 'supergroup',
-        accessible: true
-      },
-      {
-        id: '-1001678459958',
-        title: 'Грузоперевозки UA',
-        participantsCount: 19876,
-        type: 'supergroup',
-        accessible: true
-      },
-      {
-        id: '-5063354364',
-        title: 'Работа Водители',
-        participantsCount: 7543,
-        type: 'supergroup',
-        accessible: true
-      }
-    ];
-
-    res.json({
-      success: true,
-      data: availableChats,
-      message: 'Список доступных Telegram чатов'
+    console.log('🔍 Запрос реальных чатов из Telegram аккаунта...');
+    
+    // Запускаем Python скрипт для получения чатов из Railway сессии
+    const { spawn } = require('child_process');
+    const path = require('path');
+    
+    const pythonScript = path.join(__dirname, '..', 'telegram-parser', 'get_chats.py');
+    const pythonProcess = spawn('python', [pythonScript], {
+      cwd: path.join(__dirname, '..', 'telegram-parser'),
+      env: { ...process.env }
     });
+    
+    let output = '';
+    let errorOutput = '';
+    
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    pythonProcess.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+      console.log('🐍 Python лог:', data.toString().trim());
+    });
+    
+    pythonProcess.on('close', (code) => {
+      console.log(`🐍 Python процесс завершен с кодом: ${code}`);
+      
+      if (code === 0) {
+        try {
+          const chats = JSON.parse(output);
+          console.log(`✅ Получено ${chats.length} чатов из Telegram`);
+          
+          res.json({
+            success: true,
+            data: chats,
+            message: `Загружено ${chats.length} чатов из вашего Telegram аккаунта`
+          });
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON:', parseError);
+          console.error('Вывод Python:', output);
+          
+          res.status(500).json({
+            success: false,
+            error: 'Ошибка обработки данных от Telegram API',
+            details: parseError.message
+          });
+        }
+      } else {
+        console.error('❌ Python скрипт завершился с ошибкой:', errorOutput);
+        
+        res.status(500).json({
+          success: false,
+          error: 'Ошибка получения чатов из Telegram',
+          details: errorOutput
+        });
+      }
+    });
+    
+    // Таймаут для предотвращения зависания
+    setTimeout(() => {
+      pythonProcess.kill();
+      console.log('⏰ Python процесс остановлен по таймауту');
+      
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: 'Превышено время ожидания ответа от Telegram API'
+        });
+      }
+    }, 30000); // 30 секунд таймаут
+    
   } catch (error) {
-    console.error('Ошибка получения Telegram чатов:', error);
+    console.error('❌ Ошибка запуска получения чатов:', error);
     res.status(500).json({
       success: false,
       error: error.message

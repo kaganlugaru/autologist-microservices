@@ -4,9 +4,6 @@ import KeywordsManagerCompact from './KeywordsManagerCompact';
 import './Statistics.css';
 
 export default function Statistics({ stats = {}, messages = [], chats = [], onUpdate, apiBase, keywords = [] }) {
-  // Состояние для времени последнего обновления
-  const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
-
   // Управление получателями (упрощенно)
   const [recipients, setRecipients] = useState([]);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
@@ -19,13 +16,7 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
 
   useEffect(() => {
     loadRecipients();
-    setLastUpdateTime(new Date());
   }, [apiBase]);
-
-  // Обновляем время при изменении данных
-  useEffect(() => {
-    setLastUpdateTime(new Date());
-  }, [messages, chats, keywords]);
 
   const loadRecipients = async () => {
     try {
@@ -90,23 +81,8 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
   const newMessages = totalMessages - totalDuplicates;
   const activeChats = Array.isArray(chats) ? chats.filter(chat => chat && chat.active).length : 0;
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
   return (
     <div className="statistics-container">
-      {/* Время последнего обновления в шапке */}
-      <div className="stats-header">
-        <div className="last-update">
-          🕐 Последнее обновление: {formatTime(lastUpdateTime)}
-        </div>
-      </div>
-
       {/* Основная статистика - 4 карточки */}
       <div className="stats-grid">
         <div className="stat-card">
@@ -147,14 +123,6 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
         {/* Левая панель - Ключевые слова */}
         <div className="panel keywords-panel">
           <h3>🔑 Ключевые слова ({keywords.length})</h3>
-          <div className="keywords-help">
-            <div className="help-title">💡 Как использовать:</div>
-            <ul>
-              <li><strong>тандем</strong> - найдет слово "тандем"</li>
-              <li><strong>тандем;140</strong> - найдет И "тандем" И "140"</li>
-              <li><strong>груз;дальнобой;срочно</strong> - все три слова в тексте</li>
-            </ul>
-          </div>
           <KeywordsManagerCompact 
             keywords={keywords}
             apiBase={apiBase}

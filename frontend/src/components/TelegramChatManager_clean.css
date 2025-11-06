@@ -238,25 +238,6 @@
   color: var(--text);
 }
 
-/* ПРЕДУПРЕЖДЕНИЕ О ЗАГЛУШКЕ */
-.warning-note {
-  margin-top: 20px;
-  padding: 16px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  border-radius: 8px;
-  color: #d97706;
-}
-
-.warning-note p {
-  margin: 0 0 8px 0;
-  font-size: 13px;
-}
-
-.warning-note p:last-child {
-  margin-bottom: 0;
-}
-
 /* ИНФОРМАЦИОННАЯ СЕКЦИЯ */
 .panel-section {
   margin-top: 24px;
