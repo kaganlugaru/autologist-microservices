@@ -786,13 +786,38 @@ app.get('/api/telegram/chats', async (req, res) => {
         console.error('❌ Python скрипт завершился с ошибкой');
         console.error('📄 Error output:', errorOutput);
         
-        res.status(500).json({
-          success: false,
-          error: 'Ошибка получения чатов из Telegram',
-          details: errorOutput,
-          pythonCode: code,
-          rawOutput: output
-        });
+        // Специальная обработка ошибки отсутствующих зависимостей
+        if (errorOutput.includes('No module named') || errorOutput.includes('ModuleNotFoundError')) {
+          console.log('🔄 Обнаружена ошибка отсутствующих Python модулей');
+          const missingModule = errorOutput.match(/No module named '([^']+)'/)?.[1] || 'неизвестный модуль';
+          
+          res.json({
+            success: true,
+            data: [{
+              id: '-1003333333333',
+              title: `⚠️ Отсутствует Python модуль: ${missingModule}`,
+              participantsCount: 0,
+              type: 'supergroup',
+              accessible: false
+            }],
+            message: `⚠️ Необходимо установить Python зависимости`,
+            error: 'Missing Python dependencies',
+            missingModule: missingModule,
+            solution: [
+              '1. Добавить requirements.txt в корень проекта',
+              '2. Настроить Python buildpack в Render',
+              '3. Или использовать только Node.js без Python'
+            ]
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            error: 'Ошибка получения чатов из Telegram',
+            details: errorOutput,
+            pythonCode: code,
+            rawOutput: output
+          });
+        }
       }
     });
     
