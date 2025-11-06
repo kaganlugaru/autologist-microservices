@@ -148,6 +148,17 @@ class TelegramParser:
             
             logger.info(f"🔧 Создаем сессию для номера: {phone}")
             
+            # Проверяем формат номера
+            if not phone.startswith('+'):
+                logger.error(f"❌ Номер должен начинаться с '+': {phone}")
+                return False
+            
+            if len(phone) < 10:
+                logger.error(f"❌ Номер слишком короткий: {phone}")
+                return False
+            
+            logger.info(f"✅ Формат номера корректный: {phone}")
+            
             # Временный клиент для создания сессии
             temp_client = TelegramClient(self.session_name, self.api_id, self.api_hash)
             
@@ -156,8 +167,17 @@ class TelegramParser:
             if not await temp_client.is_user_authorized():
                 logger.info(f"📱 Отправляем код на номер: {phone}")
                 
-                # Отправляем код
-                await temp_client.send_code_request(phone)
+                # Отправляем код с детальной диагностикой
+                try:
+                    result = await temp_client.send_code_request(phone)
+                    logger.info(f"✅ Запрос кода отправлен успешно")
+                    logger.info(f"🔍 Результат запроса: {type(result).__name__}")
+                    logger.info(f"📞 Номер для проверки: {phone}")
+                    logger.info(f"⏰ Ожидайте SMS код в течение 1-2 минут")
+                except Exception as code_error:
+                    logger.error(f"❌ Ошибка отправки кода: {code_error}")
+                    await temp_client.disconnect()
+                    return False
                 
                 # Проверяем код из переменной окружения
                 code = os.getenv('TELEGRAM_CODE')
