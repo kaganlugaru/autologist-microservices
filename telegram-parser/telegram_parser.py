@@ -24,6 +24,13 @@ except ImportError:
     print("ОШИБКА: Нужно установить: pip install supabase")
     sys.exit(1)
 
+# Импорт утилиты для работы с сессией
+try:
+    from session_helper import setup_session_from_env
+except ImportError:
+    logger.warning("⚠️ session_helper не найден, будет использована локальная сессия")
+    setup_session_from_env = None
+
 # Загружаем переменные окружения
 load_dotenv()
 
@@ -91,6 +98,10 @@ class TelegramParser:
         }
         
         try:
+            # В Railway создаем файл сессии из переменной окружения
+            if setup_session_from_env:
+                setup_session_from_env()
+            
             # Создаем клиент Telegram
             self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
             
