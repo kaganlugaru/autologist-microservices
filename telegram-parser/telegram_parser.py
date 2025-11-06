@@ -934,6 +934,17 @@ async def main():
         session_name = os.getenv('TELEGRAM_SESSION_NAME', 'autologist_session')
         session_file = f"{session_name}.session"
         
+        # Дополнительная проверка: если переменная не установлена, но есть autologist_session.session
+        if not os.path.exists(session_file) and session_name == 'autologist_session':
+            # Проверяем другие возможные имена файлов сессии
+            possible_sessions = ['autologist_session.session', 'telegram_parser_session.session']
+            for possible_file in possible_sessions:
+                if os.path.exists(possible_file):
+                    session_name = possible_file.replace('.session', '')
+                    session_file = possible_file
+                    logger.info(f"🔧 АВТОЗАМЕНА: Используем найденный файл сессии: {session_file}")
+                    break
+        
         logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии: {session_file}")
         
         # Отладочная информация о директории
