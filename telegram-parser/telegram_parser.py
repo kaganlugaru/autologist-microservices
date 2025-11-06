@@ -934,7 +934,25 @@ async def main():
         session_name = os.getenv('TELEGRAM_SESSION_NAME', 'autologist_session')
         session_file = f"{session_name}.session"
         
-        if not os.path.exists(session_file):
+        logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии: {session_file}")
+        
+        # Отладочная информация о директории
+        current_dir = os.getcwd()
+        logger.info(f"📂 ДИРЕКТОРИЯ: {current_dir}")
+        try:
+            files = os.listdir(current_dir)
+            session_files = [f for f in files if f.endswith('.session')]
+            logger.info(f"📁 ФАЙЛЫ СЕССИЙ: {session_files}")
+            if files:
+                logger.info(f"📄 ВСЕГО ФАЙЛОВ: {len(files)}")
+        except Exception as e:
+            logger.error(f"❌ ОШИБКА ЧТЕНИЯ ДИРЕКТОРИИ: {e}")
+        
+        if os.path.exists(session_file):
+            file_size = os.path.getsize(session_file)
+            logger.info(f"✅ НАЙДЕНО: Файл сессии существует ({file_size} байт)")
+            logger.info(f"🚀 ИСПОЛЬЗУЕМ: Готовую сессию для быстрого запуска")
+        else:
             logger.warning("⚠️ Файл сессии не найден, пытаемся создать...")
             
             # Создаем временный парсер только для создания сессии
