@@ -499,10 +499,26 @@ class TelegramParser:
     async def start_monitoring(self):
         """Запуск мониторинга сообщений"""
         try:
+            # Проверяем наличие файла сессии
+            session_file = f"{self.session_name}.session"
+            if not os.path.exists(session_file):
+                logger.error("❌ ОШИБКА: Файл сессии Telegram не найден!")
+                logger.error("📋 Инструкция:")
+                logger.error("1. Запустите локально: python create_session.py")
+                logger.error("2. Введите код из SMS")
+                logger.error("3. Загрузите файл сессии на Railway")
+                raise FileNotFoundError(f"Сессия Telegram не найдена: {session_file}")
+            
             # Автоматический запуск без запроса кода (используется сохраненная сессия)
             await self.client.start()
-            logger.info("МОНИТОРИНГ: Подключение к Telegram успешно")
-            logger.info("СТАТУС: Запуск отслеживания новых сообщений...")
+            
+            # Проверяем авторизацию
+            if not await self.client.is_user_authorized():
+                logger.error("❌ ОШИБКА: Telegram сессия не авторизована!")
+                raise RuntimeError("Telegram сессия требует повторной авторизации")
+            
+            logger.info("✅ МОНИТОРИНГ: Подключение к Telegram успешно")
+            logger.info("🎯 СТАТУС: Запуск отслеживания новых сообщений...")
             
             @self.client.on(events.NewMessage)
             async def handle_new_message(event):
