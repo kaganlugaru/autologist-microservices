@@ -109,18 +109,32 @@ class TelegramParser:
             if setup_session_from_env:
                 setup_session_from_env()
             
-            # Определяем путь к сессии (в корневой папке проекта)
-            session_path = os.path.join('..', f"{self.session_name}.session")
+            # Определяем возможные пути к сессии
+            possible_paths = [
+                f"{self.session_name}.session",  # В текущей папке
+                os.path.join('..', f"{self.session_name}.session"),  # В родительской папке
+                os.path.join('/', f"{self.session_name}.session"),   # В корне контейнера
+            ]
+            
+            session_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    session_path = path
+                    logger.info(f"✅ НАЙДЕНА СЕССИЯ: {path}")
+                    break
             
             # Проверяем существование файла сессии
-            if not os.path.exists(session_path):
-                logger.error("❌ Файл сессии не найден")
+            if not session_path:
+                logger.error("❌ Файл сессии не найден ни в одном из путей:")
+                for path in possible_paths:
+                    logger.error(f"   ❌ {path}")
                 logger.error("💡 Сессия должна быть создана до инициализации парсера")
                 raise Exception("Файл сессии не найден")
             
-            # Создаем клиент с правильным путем к сессии
-            session_name = os.path.join('..', self.session_name)
-            self.client = TelegramClient(session_name, self.api_id, self.api_hash)
+            # Создаем клиент с найденным путем к сессии
+            # Убираем расширение .session для имени сессии
+            session_name_for_client = session_path.replace('.session', '')
+            self.client = TelegramClient(session_name_for_client, self.api_id, self.api_hash)
             
             # Загружаем данные
             asyncio.create_task(self.load_keywords())
@@ -1003,27 +1017,53 @@ async def main():
             session_name = 'local_development'
             logger.info("💻 Main: Используем локальную development сессию")
         
-        # Определяем путь к сессии (в корневой папке проекта)
-        session_path = os.path.join('..', f"{session_name}.session")
+        # Определяем возможные пути к сессии
+        possible_paths = [
+            f"{session_name}.session",  # В текущей папке
+            os.path.join('..', f"{session_name}.session"),  # В родительской папке
+            os.path.join('/', f"{session_name}.session"),   # В корне контейнера
+        ]
         
-        logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии: {session_path}")
+        logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии...")
         
         # Отладочная информация о директории
         current_dir = os.getcwd()
-        parent_dir = os.path.join(current_dir, '..')
         logger.info(f"📂 ТЕКУЩАЯ ДИРЕКТОРИЯ: {current_dir}")
-        logger.info(f"📂 РОДИТЕЛЬСКАЯ ДИРЕКТОРИЯ: {os.path.abspath(parent_dir)}")
         
+        # Ищем сессию во всех возможных местах
+        session_path = None
+        for path in possible_paths:
+            logger.info(f"� Проверяем: {path}")
+            if os.path.exists(path):
+                session_path = path
+                logger.info(f"✅ НАЙДЕНА СЕССИЯ: {path}")
+                break
+            else:
+                logger.info(f"❌ Не найдена: {path}")
+        
+        # Проверяем файлы в разных директориях
         try:
-            parent_files = os.listdir(parent_dir)
-            session_files = [f for f in parent_files if f.endswith('.session')]
-            logger.info(f"📁 ФАЙЛЫ СЕССИЙ В КОРНЕ: {session_files}")
-            if parent_files:
-                logger.info(f"📄 ВСЕГО ФАЙЛОВ В КОРНЕ: {len(parent_files)}")
+            # Проверяем текущую директорию
+            current_files = os.listdir(current_dir)
+            current_sessions = [f for f in current_files if f.endswith('.session')]
+            logger.info(f"📁 ФАЙЛЫ СЕССИЙ В ТЕКУЩЕЙ: {current_sessions}")
+            
+            # Проверяем родительскую директорию
+            parent_dir = os.path.join(current_dir, '..')
+            if os.path.exists(parent_dir):
+                parent_files = os.listdir(parent_dir)
+                parent_sessions = [f for f in parent_files if f.endswith('.session')]
+                logger.info(f"� ФАЙЛЫ СЕССИЙ В РОДИТЕЛЬСКОЙ: {parent_sessions}")
+                
+            # Проверяем корень
+            if os.path.exists('/'):
+                root_files = os.listdir('/')
+                root_sessions = [f for f in root_files if f.endswith('.session')]
+                logger.info(f"📁 ФАЙЛЫ СЕССИЙ В КОРНЕ /: {root_sessions}")
         except Exception as e:
-            logger.error(f"❌ ОШИБКА ЧТЕНИЯ РОДИТЕЛЬСКОЙ ДИРЕКТОРИИ: {e}")
+            logger.error(f"❌ ОШИБКА ПРОВЕРКИ ДИРЕКТОРИЙ: {e}")
         
-        if os.path.exists(session_path):
+        if session_path and os.path.exists(session_path):
             file_size = os.path.getsize(session_path)
             logger.info(f"✅ НАЙДЕНО: Файл сессии существует ({file_size} байт)")
             logger.info(f"🚀 ИСПОЛЬЗУЕМ: Готовую сессию для быстрого запуска")
