@@ -159,6 +159,14 @@ class TelegramParser:
             
             logger.info(f"✅ Формат номера корректный: {phone}")
             
+            # Определяем страну
+            if phone.startswith('+77'):
+                logger.info(f"🇰🇿 Страна: Казахстан (может потребоваться звонок)")
+            elif phone.startswith('+79'):
+                logger.info(f"🇷🇺 Страна: Россия (SMS)")
+            else:
+                logger.info(f"🌍 Международный номер: {phone[:4]}...")
+            
             # Временный клиент для создания сессии
             temp_client = TelegramClient(self.session_name, self.api_id, self.api_hash)
             
@@ -169,15 +177,39 @@ class TelegramParser:
                 
                 # Отправляем код с детальной диагностикой
                 try:
-                    result = await temp_client.send_code_request(phone)
+                    # Для Казахстана попробуем сначала звонок
+                    if phone.startswith('+77'):
+                        logger.info(f"🇰🇿 Обнаружен номер Казахстана: {phone}")
+                        logger.info(f"📞 Пробуем запросить звонок вместо SMS")
+                        result = await temp_client.send_code_request(phone, force_call=True)
+                    else:
+                        result = await temp_client.send_code_request(phone)
+                    
                     logger.info(f"✅ Запрос кода отправлен успешно")
                     logger.info(f"🔍 Результат запроса: {type(result).__name__}")
                     logger.info(f"📞 Номер для проверки: {phone}")
-                    logger.info(f"⏰ Ожидайте SMS код в течение 1-2 минут")
+                    
+                    if phone.startswith('+77'):
+                        logger.info(f"☎️ Для Казахстана: ожидайте ЗВОНОК с кодом")
+                    else:
+                        logger.info(f"⏰ Ожидайте SMS код в течение 1-2 минут")
+                        
                 except Exception as code_error:
                     logger.error(f"❌ Ошибка отправки кода: {code_error}")
-                    await temp_client.disconnect()
-                    return False
+                    
+                    # Если звонок не получился, пробуем SMS
+                    if phone.startswith('+77'):
+                        logger.info(f"🔄 Звонок не удался, пробуем SMS для Казахстана")
+                        try:
+                            result = await temp_client.send_code_request(phone)
+                            logger.info(f"✅ SMS запрос отправлен для Казахстана")
+                        except Exception as sms_error:
+                            logger.error(f"❌ SMS тоже не удался: {sms_error}")
+                            await temp_client.disconnect()
+                            return False
+                    else:
+                        await temp_client.disconnect()
+                        return False
                 
                 # Проверяем код из переменной окружения
                 code = os.getenv('TELEGRAM_CODE')
