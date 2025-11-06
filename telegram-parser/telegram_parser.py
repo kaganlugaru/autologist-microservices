@@ -102,6 +102,14 @@ class TelegramParser:
             if setup_session_from_env:
                 setup_session_from_env()
             
+            # Проверяем существование файла сессии
+            session_file = f"{self.session_name}.session"
+            if not os.path.exists(session_file):
+                logger.warning("⚠️ Файл сессии не найден, пытаемся создать новую сессию...")
+                success = await self.create_session_from_env()
+                if not success:
+                    raise Exception("Не удалось создать сессию Telegram")
+            
             # Создаем клиент Telegram
             self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
             
@@ -128,6 +136,64 @@ class TelegramParser:
         except KeyboardInterrupt:
             logger.error(f"ОШИБКА: Инициализация прервана пользователем")
             raise
+    
+    async def create_session_from_env(self):
+        """Создает сессию из переменных окружения для Railway"""
+        try:
+            phone = os.getenv('TELEGRAM_PHONE')
+            
+            if not phone:
+                logger.error("❌ TELEGRAM_PHONE не установлен")
+                logger.error("💡 Добавьте переменную TELEGRAM_PHONE в Railway (например +77771234567)")
+                return False
+            
+            logger.info(f"🔧 Создаем сессию для номера: {phone}")
+            
+            # Временный клиент для создания сессии
+            temp_client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+            
+            await temp_client.connect()
+            
+            if not await temp_client.is_user_authorized():
+                logger.info(f"📱 Отправляем код на номер: {phone}")
+                
+                # Отправляем код
+                await temp_client.send_code_request(phone)
+                
+                # Проверяем код из переменной окружения
+                code = os.getenv('TELEGRAM_CODE')
+                if not code:
+                    logger.error("❌ TELEGRAM_CODE не установлен")
+                    logger.error("💡 Получите SMS код и добавьте переменную TELEGRAM_CODE в Railway")
+                    await temp_client.disconnect()
+                    return False
+                
+                logger.info(f"🔑 Используем код: {code}")
+                
+                try:
+                    await temp_client.sign_in(phone, code)
+                except SessionPasswordNeededError:
+                    password = os.getenv('TELEGRAM_PASSWORD')
+                    if not password:
+                        logger.error("❌ TELEGRAM_PASSWORD не установлен")
+                        logger.error("💡 Добавьте переменную TELEGRAM_PASSWORD для двухфакторной аутентификации")
+                        await temp_client.disconnect()
+                        return False
+                    
+                    await temp_client.sign_in(password=password)
+            
+            # Проверяем авторизацию
+            me = await temp_client.get_me()
+            logger.info(f"✅ Успешно авторизован как: {me.first_name}")
+            
+            await temp_client.disconnect()
+            
+            logger.info(f"✅ Сессия создана: {self.session_name}.session")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Ошибка создания сессии: {e}")
+            return False
 
     def load_keywords_sync(self):
         """Синхронная загрузка ключевых слов"""

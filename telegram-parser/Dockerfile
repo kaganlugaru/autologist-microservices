@@ -9,5 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копирование кода
 COPY . .
 
+# Создание папки для логов
+RUN mkdir -p logs
+
 # Запуск приложения
 CMD ["python", "telegram_parser.py"]
