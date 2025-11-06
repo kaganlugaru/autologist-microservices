@@ -106,7 +106,7 @@ class TelegramParser:
             session_file = f"{self.session_name}.session"
             if not os.path.exists(session_file):
                 logger.warning("⚠️ Файл сессии не найден, пытаемся создать новую сессию...")
-                success = await self.create_session_from_env()
+                success = asyncio.run(self.create_session_from_env())
                 if not success:
                     raise Exception("Не удалось создать сессию Telegram")
             
