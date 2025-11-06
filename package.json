@@ -7,7 +7,7 @@
     "install:backend": "cd backend && npm install",
     "install:frontend": "cd frontend && npm install",
     "install:parser": "cd telegram-parser && pip install -r requirements.txt",
-    "install:python": "pip install -r requirements.txt",
+    "install:python": "python -m pip install --upgrade pip && pip install telethon==1.35.0 python-dotenv==1.0.0",
     
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:parser\"",
     "dev:backend": "cd backend && npm run dev",
@@ -16,6 +16,7 @@
     
     "build": "npm run build:frontend && npm run install:python",
     "build:frontend": "cd frontend && npm run build",
+    "install:python": "python -m pip install --upgrade pip && pip install telethon==1.35.0 python-dotenv==1.0.0",
     
     "start": "pm2 start ecosystem.config.js",
     "stop": "pm2 stop all",
