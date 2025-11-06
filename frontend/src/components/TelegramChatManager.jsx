@@ -205,17 +205,6 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
                 ))
             )}
           </div>
-
-          {/* ПРИНЦИП РАБОТЫ */}
-          <div className="panel-section">
-            <h3>💡 Принцип работы</h3>
-            <div className="info-list">
-              <div className="info-item">🎯 Мониторинг чатов в реальном времени</div>
-              <div className="info-item">🔍 Поиск по ключевым словам</div>
-              <div className="info-item">🚫 Автофильтрация дубликатов</div>
-              <div className="info-item">📨 Уведомления получателям</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -669,64 +669,14 @@ app.get('/api/telegram/chats', async (req, res) => {
   try {
     console.log('🔍 Запрос реальных чатов из Telegram аккаунта...');
     
-    // Проверяем доступность Python и среду выполнения
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
-    
-    if (isProduction) {
-      console.log('🌐 Production окружение - возвращаем демо чаты');
-      
-      // В продакшене возвращаем демо-данные пока не настроена Python среда
-      const demoChats = [
-        {
-          id: '-1001234567890',
-          title: 'Груз Украина',
-          participantsCount: 15234,
-          type: 'supergroup',
-          accessible: true
-        },
-        {
-          id: '-1001234567891',
-          title: 'Логистика Европа', 
-          participantsCount: 8765,
-          type: 'supergroup',
-          accessible: true
-        },
-        {
-          id: '-1001234567892',
-          title: 'Автобазар',
-          participantsCount: 23456,
-          type: 'supergroup',
-          accessible: true
-        },
-        {
-          id: '-1001234567893',
-          title: 'Дальнобой Форум',
-          participantsCount: 12890,
-          type: 'supergroup',
-          accessible: true
-        },
-        {
-          id: '-1001234567894',
-          title: 'Грузоперевозки UA',
-          participantsCount: 19876,
-          type: 'supergroup',
-          accessible: true
-        }
-      ];
-      
-      return res.json({
-        success: true,
-        data: demoChats,
-        message: `Загружено ${demoChats.length} демо-чатов (Production режим)`,
-        note: 'В продакшене используются демо-данные. Для реальных чатов настройте Python окружение.'
-      });
-    }
-    
-    // Запускаем Python скрипт для получения чатов из Railway сессии (только в dev)
+    // Запускаем Python скрипт для получения чатов из Railway сессии
     const { spawn } = require('child_process');
     const path = require('path');
     
     const pythonScript = path.join(__dirname, '..', 'telegram-parser', 'get_chats.py');
+    
+    console.log('🐍 Запуск Python скрипта:', pythonScript);
+    
     const pythonProcess = spawn('python', [pythonScript], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),
       env: { ...process.env }
@@ -764,7 +714,9 @@ app.get('/api/telegram/chats', async (req, res) => {
           res.status(500).json({
             success: false,
             error: 'Ошибка обработки данных от Telegram API',
-            details: parseError.message
+            details: parseError.message,
+            output: output,
+            errorOutput: errorOutput
           });
         }
       } else {
@@ -773,7 +725,8 @@ app.get('/api/telegram/chats', async (req, res) => {
         res.status(500).json({
           success: false,
           error: 'Ошибка получения чатов из Telegram',
-          details: errorOutput
+          details: errorOutput,
+          pythonCode: code
         });
       }
     });
@@ -781,22 +734,11 @@ app.get('/api/telegram/chats', async (req, res) => {
     pythonProcess.on('error', (error) => {
       console.error('❌ Ошибка запуска Python процесса:', error);
       
-      // Fallback на демо-данные при ошибке Python
-      const fallbackChats = [
-        {
-          id: '-1001111111111',
-          title: 'Тестовый чат 1',
-          participantsCount: 100,
-          type: 'supergroup',
-          accessible: true
-        }
-      ];
-      
-      res.json({
-        success: true,
-        data: fallbackChats,
-        message: 'Python недоступен - загружены демо-чаты',
-        warning: 'Для реальных чатов установите Python и зависимости'
+      res.status(500).json({
+        success: false,
+        error: 'Python недоступен в данном окружении',
+        details: error.message,
+        suggestion: 'Установите Python и зависимости: pip install telethon python-dotenv'
       });
     });
     
@@ -808,7 +750,8 @@ app.get('/api/telegram/chats', async (req, res) => {
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
-          error: 'Превышено время ожидания ответа от Telegram API'
+          error: 'Превышено время ожидания ответа от Telegram API (30 секунд)',
+          timeout: true
         });
       }
     }, 30000); // 30 секунд таймаут

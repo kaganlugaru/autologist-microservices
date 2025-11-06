@@ -118,6 +118,17 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
         </div>
       </div>
 
+      {/* ПРИНЦИП РАБОТЫ - НА УРОВНЕ СТАТИСТИКИ */}
+      <div className="principle-section">
+        <h2>💡 Принцип работы</h2>
+        <div className="principle-grid">
+          <div className="principle-item">🎯 Мониторинг чатов в реальном времени</div>
+          <div className="principle-item">🔍 Поиск по ключевым словам</div>
+          <div className="principle-item">🚫 Автофильтрация дубликатов</div>
+          <div className="principle-item">📨 Уведомления получателям</div>
+        </div>
+      </div>
+
       {/* Две панели рядом */}
       <div className="management-panels">
         {/* Левая панель - Ключевые слова */}

@@ -41,22 +41,30 @@ async def get_telegram_chats():
         logger.error("❌ TELEGRAM_API_ID и TELEGRAM_API_HASH должны быть установлены в .env файле")
         return []
     
-    # Используем Railway production сессию
-    session_name = 'railway_production'
-    session_file = f"{session_name}.session"
+    # Ищем доступные сессии (в порядке приоритета)
+    session_candidates = [
+        'railway_production',  # Railway production
+        '../railway_production',  # Из корня проекта
+        'autologist_session',  # Старая сессия
+        '../autologist_session',  # Из корня
+        'local_development'    # Локальная разработка
+    ]
     
-    # Проверяем наличие сессии
-    if not os.path.exists(session_file):
-        logger.error(f"❌ Файл сессии не найден: {session_file}")
-        logger.info("💡 Попробуем создать из переменной окружения...")
-        
-        if setup_session_from_env:
-            if not setup_session_from_env():
-                logger.error("❌ Не удалось создать сессию")
-                return []
-        else:
-            logger.error("❌ session_helper недоступен")
-            return []
+    session_name = None
+    session_file = None
+    
+    for candidate in session_candidates:
+        test_file = f"{candidate}.session"
+        if os.path.exists(test_file):
+            session_name = candidate
+            session_file = test_file
+            logger.info(f"✅ Найдена сессия: {session_file}")
+            break
+    
+    if not session_name:
+        logger.error("❌ Не найдено ни одной сессии Telegram")
+        logger.info("💡 Доступные варианты: railway_production.session, autologist_session.session")
+        return []
     
     client = None
     try:
