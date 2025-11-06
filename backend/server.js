@@ -698,10 +698,26 @@ app.get('/api/telegram/chats', async (req, res) => {
     const fs = require('fs');
     if (!fs.existsSync(pythonScript)) {
       console.error('❌ Python скрипт не найден:', pythonScript);
-      return res.status(500).json({
-        success: false,
-        error: 'Python скрипт не найден',
-        scriptPath: pythonScript
+      
+      // ВРЕМЕННЫЙ FALLBACK: демо-данные если скрипт не найден
+      console.log('🔄 Fallback: возвращаем демо-данные из-за отсутствия скрипта');
+      const fallbackChats = [
+        {
+          id: '-1002222222222',
+          title: '⚠️ Скрипт не найден - демо чат',
+          participantsCount: 200,
+          type: 'supergroup',
+          accessible: true
+        }
+      ];
+      
+      return res.json({
+        success: true,
+        data: fallbackChats,
+        message: '⚠️ Python скрипт не найден - показаны демо-данные',
+        error: 'Python script not found',
+        scriptPath: pythonScript,
+        suggestion: 'Проверьте что файл telegram-parser/get_chats.py существует'
       });
     }
     console.log('✅ Python скрипт найден');
@@ -787,14 +803,27 @@ app.get('/api/telegram/chats', async (req, res) => {
       console.error('  - Неправильный PATH');
       console.error('  - Отсутствуют зависимости');
       
-      res.status(500).json({
-        success: false,
-        error: 'Python недоступен в данном окружении',
-        details: error.message,
+      // ВРЕМЕННЫЙ FALLBACK: демо-данные только при ошибке Python
+      console.log('🔄 Fallback: возвращаем демо-данные из-за ошибки Python');
+      const fallbackChats = [
+        {
+          id: '-1001111111111',
+          title: '⚠️ Python недоступен - демо чат',
+          participantsCount: 100,
+          type: 'supergroup',
+          accessible: true
+        }
+      ];
+      
+      res.json({
+        success: true,
+        data: fallbackChats,
+        message: '⚠️ Python недоступен - показаны демо-данные',
+        error: 'Python environment not available',
         suggestions: [
-          'Установите Python',
-          'Добавьте Python в PATH',
-          'Установите зависимости: pip install telethon python-dotenv'
+          'Установите Python на сервере',
+          'Добавьте Python buildpack в Render',
+          'Проверьте зависимости: pip install telethon python-dotenv'
         ]
       });
     });
