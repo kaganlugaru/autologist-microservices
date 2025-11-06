@@ -694,6 +694,33 @@ app.get('/api/telegram/chats', async (req, res) => {
       RENDER: !!process.env.RENDER
     });
     
+    // Проверяем наличие переменных окружения
+    if (!process.env.TELEGRAM_API_ID || !process.env.TELEGRAM_API_HASH) {
+      console.error('❌ Отсутствуют переменные окружения Telegram');
+      
+      return res.json({
+        success: true,
+        data: [{
+          id: '-1004444444444',
+          title: '⚠️ Не настроены переменные окружения Telegram',
+          participantsCount: 0,
+          type: 'supergroup',
+          accessible: false
+        }],
+        message: '⚠️ Необходимо настроить переменные окружения',
+        error: 'Missing environment variables',
+        missingVars: {
+          TELEGRAM_API_ID: !process.env.TELEGRAM_API_ID,
+          TELEGRAM_API_HASH: !process.env.TELEGRAM_API_HASH
+        },
+        solution: [
+          '1. Добавить TELEGRAM_API_ID в Render Environment',
+          '2. Добавить TELEGRAM_API_HASH в Render Environment',
+          '3. Перезапустить сервис'
+        ]
+      });
+    }
+    
     // Проверяем существование скрипта
     const fs = require('fs');
     if (!fs.existsSync(pythonScript)) {

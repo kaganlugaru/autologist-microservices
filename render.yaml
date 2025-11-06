@@ -1,10 +1,21 @@
 services:
   - type: web
-    name: autologist-backend
+    name: autologist-microservices
     env: node
     plan: free
-    buildCommand: npm install
+    buildCommand: chmod +x build.sh && ./build.sh
     startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_API_ID
+        sync: false
+      - key: TELEGRAM_API_HASH  
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

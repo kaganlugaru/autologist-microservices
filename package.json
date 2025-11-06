@@ -7,13 +7,14 @@
     "install:backend": "cd backend && npm install",
     "install:frontend": "cd frontend && npm install",
     "install:parser": "cd telegram-parser && pip install -r requirements.txt",
+    "install:python": "pip install -r requirements.txt",
     
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:parser\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
     "dev:parser": "cd telegram-parser && python telegram_parser.py",
     
-    "build": "npm run build:frontend",
+    "build": "npm run build:frontend && npm run install:python",
     "build:frontend": "cd frontend && npm run build",
     
     "start": "pm2 start ecosystem.config.js",
