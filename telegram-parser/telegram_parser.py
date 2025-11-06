@@ -57,7 +57,14 @@ class TelegramParser:
         self.api_id = os.getenv('TELEGRAM_API_ID')
         self.api_hash = os.getenv('TELEGRAM_API_HASH')
         self.phone = os.getenv('TELEGRAM_PHONE')
-        self.session_name = 'autologist_session'
+        
+        # Выбираем сессию в зависимости от окружения
+        if os.getenv('RAILWAY_ENVIRONMENT') == 'production':
+            self.session_name = 'railway_production'
+            logger.info("🚄 Используем Railway production сессию")
+        else:
+            self.session_name = 'local_development'
+            logger.info("💻 Используем локальную development сессию")
         
         # ID для отправки уведомлений (убрать функцию уведомлений)
         # self.my_telegram_id = os.getenv('MY_TELEGRAM_ID', 'disabled')
@@ -102,15 +109,18 @@ class TelegramParser:
             if setup_session_from_env:
                 setup_session_from_env()
             
+            # Определяем путь к сессии (в корневой папке проекта)
+            session_path = os.path.join('..', f"{self.session_name}.session")
+            
             # Проверяем существование файла сессии
-            session_file = f"{self.session_name}.session"
-            if not os.path.exists(session_file):
+            if not os.path.exists(session_path):
                 logger.error("❌ Файл сессии не найден")
                 logger.error("💡 Сессия должна быть создана до инициализации парсера")
                 raise Exception("Файл сессии не найден")
             
-            # Создаем клиент Telegram
-            self.client = TelegramClient(self.session_name, self.api_id, self.api_hash)
+            # Создаем клиент с правильным путем к сессии
+            session_name = os.path.join('..', self.session_name)
+            self.client = TelegramClient(session_name, self.api_id, self.api_hash)
             
             # Загружаем данные
             asyncio.create_task(self.load_keywords())
@@ -416,13 +426,37 @@ class TelegramParser:
         return hashlib.md5(content.encode()).hexdigest()
 
     def check_keywords(self, text):
-        """Проверка наличия ключевых слов в тексте"""
+        """
+        Проверка наличия ключевых слов в тексте с поддержкой сложных условий
+        
+        Поддерживаемые операторы:
+        - Простое слово: "тандем" - ищет слово "тандем" в тексте
+        - Логическое И: "тандем;140" - ищет оба слова "тандем" И "140" в тексте
+        - Можно комбинировать: "груз;дальнобой;срочно" - все три слова должны быть в тексте
+        """
         found_keywords = []
         text_lower = text.lower()
         
         for keyword in self.keywords:
-            if keyword in text_lower:
-                found_keywords.append(keyword)
+            # Проверяем, содержит ли ключевое слово оператор логического И (;)
+            if ';' in keyword:
+                # Разбиваем ключевое слово на части по символу ;
+                keyword_parts = [part.strip() for part in keyword.split(';')]
+                
+                # Проверяем, что ВСЕ части присутствуют в тексте
+                all_parts_found = True
+                for part in keyword_parts:
+                    if part and part not in text_lower:
+                        all_parts_found = False
+                        break
+                
+                # Если все части найдены, добавляем в результат
+                if all_parts_found and len(keyword_parts) > 1:
+                    found_keywords.append(keyword)
+            else:
+                # Обычная проверка для простых ключевых слов
+                if keyword in text_lower:
+                    found_keywords.append(keyword)
         
         return found_keywords
 
@@ -775,15 +809,38 @@ class TelegramParser:
             # Отправляем всем получателям
             for recipient in recipients:
                 try:
-                    # Отправляем по username с поддержкой Markdown
+                    # Определяем, как отправлять сообщение
+                    contact_info = None
+                    contact_type = None
+                    
+                    # Приоритет: номер телефона, затем username
+                    if recipient.get('phone'):
+                        contact_info = recipient['phone']
+                        contact_type = 'phone'
+                        logger.info(f"ОТПРАВКА: Отправляем по номеру телефона {contact_info}")
+                    elif recipient.get('username'):
+                        contact_info = recipient['username']
+                        contact_type = 'username'
+                        logger.info(f"ОТПРАВКА: Отправляем по username @{contact_info}")
+                    else:
+                        logger.warning(f"ПРОПУСК: У получателя {recipient['name']} нет ни телефона, ни username")
+                        continue
+                    
+                    # Отправляем сообщение
                     await self.client.send_message(
-                        recipient['username'], 
+                        contact_info, 
                         notification_text,
                         parse_mode='markdown'
                     )
-                    logger.info(f"ОТПРАВКА: Сообщение отправлено {recipient['name']} (@{recipient['username']})")
+                    
+                    if contact_type == 'phone':
+                        logger.info(f"ОТПРАВКА: ✅ Сообщение отправлено {recipient['name']} (📞 {contact_info})")
+                    else:
+                        logger.info(f"ОТПРАВКА: ✅ Сообщение отправлено {recipient['name']} (@{contact_info})")
+                        
                 except Exception as e:
-                    logger.error(f"ОШИБКА: Не удалось отправить сообщение {recipient['name']} (@{recipient['username']}): {e}")
+                    error_contact = recipient.get('phone') or f"@{recipient.get('username', 'unknown')}"
+                    logger.error(f"ОШИБКА: ❌ Не удалось отправить сообщение {recipient['name']} ({error_contact}): {e}")
                     
         except Exception as e:
             logger.error(f"ОШИБКА: Отправка сообщений получателям: {e}")
@@ -815,15 +872,23 @@ class TelegramParser:
                 recipients.extend(response.data)
                 logger.info(f"ОТПРАВКА: Для категории '{category}' найдено {len(response.data)} получателей")
             
-            # Убираем дубликаты по username
+            # Убираем дубликаты по phone или username
             unique_recipients = []
-            seen_usernames = set()
+            seen_contacts = set()
             for recipient in recipients:
-                if recipient['username'] not in seen_usernames:
+                # Создаем уникальный ключ для получателя
+                contact_key = recipient.get('phone') or recipient.get('username')
+                if contact_key and contact_key not in seen_contacts:
                     unique_recipients.append(recipient)
-                    seen_usernames.add(recipient['username'])
+                    seen_contacts.add(contact_key)
             
             logger.info(f"ОТПРАВКА: Найдено {len(unique_recipients)} уникальных получателей для категорий: {list(categories)}")
+            
+            # Выводим информацию о получателях для отладки
+            for recipient in unique_recipients:
+                contact_info = recipient.get('phone') or f"@{recipient.get('username', 'unknown')}"
+                logger.info(f"ОТПРАВКА: - {recipient['name']} ({contact_info}) в категории '{recipient['category']}'")
+            
             return unique_recipients
             
         except Exception as e:
@@ -930,37 +995,36 @@ async def main():
     """Главная функция"""
     parser = None
     try:
-        # Проверяем и создаем сессию если нужно
-        session_name = os.getenv('TELEGRAM_SESSION_NAME', 'autologist_session')
-        session_file = f"{session_name}.session"
+        # Используем ту же логику выбора сессии, что и в __init__
+        if os.getenv('RAILWAY_ENVIRONMENT') == 'production':
+            session_name = 'railway_production'
+            logger.info("🚄 Main: Используем Railway production сессию")
+        else:
+            session_name = 'local_development'
+            logger.info("💻 Main: Используем локальную development сессию")
         
-        # Дополнительная проверка: если переменная не установлена, но есть autologist_session.session
-        if not os.path.exists(session_file) and session_name == 'autologist_session':
-            # Проверяем другие возможные имена файлов сессии
-            possible_sessions = ['autologist_session.session', 'telegram_parser_session.session']
-            for possible_file in possible_sessions:
-                if os.path.exists(possible_file):
-                    session_name = possible_file.replace('.session', '')
-                    session_file = possible_file
-                    logger.info(f"🔧 АВТОЗАМЕНА: Используем найденный файл сессии: {session_file}")
-                    break
+        # Определяем путь к сессии (в корневой папке проекта)
+        session_path = os.path.join('..', f"{session_name}.session")
         
-        logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии: {session_file}")
+        logger.info(f"🔍 ПРОВЕРКА: Поиск файла сессии: {session_path}")
         
         # Отладочная информация о директории
         current_dir = os.getcwd()
-        logger.info(f"📂 ДИРЕКТОРИЯ: {current_dir}")
-        try:
-            files = os.listdir(current_dir)
-            session_files = [f for f in files if f.endswith('.session')]
-            logger.info(f"📁 ФАЙЛЫ СЕССИЙ: {session_files}")
-            if files:
-                logger.info(f"📄 ВСЕГО ФАЙЛОВ: {len(files)}")
-        except Exception as e:
-            logger.error(f"❌ ОШИБКА ЧТЕНИЯ ДИРЕКТОРИИ: {e}")
+        parent_dir = os.path.join(current_dir, '..')
+        logger.info(f"📂 ТЕКУЩАЯ ДИРЕКТОРИЯ: {current_dir}")
+        logger.info(f"📂 РОДИТЕЛЬСКАЯ ДИРЕКТОРИЯ: {os.path.abspath(parent_dir)}")
         
-        if os.path.exists(session_file):
-            file_size = os.path.getsize(session_file)
+        try:
+            parent_files = os.listdir(parent_dir)
+            session_files = [f for f in parent_files if f.endswith('.session')]
+            logger.info(f"📁 ФАЙЛЫ СЕССИЙ В КОРНЕ: {session_files}")
+            if parent_files:
+                logger.info(f"📄 ВСЕГО ФАЙЛОВ В КОРНЕ: {len(parent_files)}")
+        except Exception as e:
+            logger.error(f"❌ ОШИБКА ЧТЕНИЯ РОДИТЕЛЬСКОЙ ДИРЕКТОРИИ: {e}")
+        
+        if os.path.exists(session_path):
+            file_size = os.path.getsize(session_path)
             logger.info(f"✅ НАЙДЕНО: Файл сессии существует ({file_size} байт)")
             logger.info(f"🚀 ИСПОЛЬЗУЕМ: Готовую сессию для быстрого запуска")
         else:

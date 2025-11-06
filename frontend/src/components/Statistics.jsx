@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import axios from 'axios';
+import KeywordsManagerCompact from './KeywordsManagerCompact';
+import DatabaseMigration from './DatabaseMigration';
 import './Statistics.css';
 
 export default function Statistics({ stats = {}, messages = [], chats = [], onUpdate, apiBase, keywords = [] }) {
-  // Отладочная информация
-  console.log('Statistics component data:', {
+  // Отладочная информация (только при ошибках)
+  const debugData = {
     messagesCount: Array.isArray(messages) ? messages.length : 'not array',
-    chatsCount: Array.isArray(chats) ? chats.length : 'not array',
+    chatsCount: Array.isArray(chats) ? chats.length : 'not array',  
     keywordsCount: Array.isArray(keywords) ? keywords.length : 'not array',
     apiBase
-  });
+  };
+  
+  // Логируем только один раз при монтировании компонента
+  useEffect(() => {
+    console.log('Statistics component mounted:', debugData);
+  }, []);
 
   // Управление парсером
   const [parserStatus, setParserStatus] = useState({
@@ -27,7 +34,7 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [newRecipient, setNewRecipient] = useState({
     name: '',
-    username: '',
+    phone: '',
     category: 'грузоперевозки'
   });
   const [recipientError, setRecipientError] = useState('');
@@ -96,8 +103,15 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
 
   const addRecipient = async (e) => {
     e.preventDefault();
-    if (!newRecipient.name || !newRecipient.username) {
-      setRecipientError('Заполните все поля');
+    if (!newRecipient.name || !newRecipient.phone) {
+      setRecipientError('Введите имя и номер телефона');
+      return;
+    }
+
+    // Валидация номера телефона
+    const phoneRegex = /^\+\d{10,15}$/;
+    if (!phoneRegex.test(newRecipient.phone)) {
+      setRecipientError('Номер телефона должен начинаться с + и содержать 10-15 цифр');
       return;
     }
 
@@ -108,7 +122,7 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
       await axios.post(`${apiBase}/recipient-categories`, newRecipient);
       
       setRecipientSuccess('Получатель успешно добавлен');
-      setNewRecipient({ name: '', username: '', category: 'грузоперевозки' });
+      setNewRecipient({ name: '', phone: '', category: 'грузоперевозки' });
       loadRecipients();
       
       setTimeout(() => setRecipientSuccess(''), 3000);
@@ -343,22 +357,20 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
           </div>
           
           <div className="info-section">
-            <h4>🔍 Ключевые слова</h4>
-            <div className="compact-keywords">
-              {Array.isArray(keywords) && keywords.length > 0 ? (
-                keywords.slice(0, 3).map((keyword, index) => (
-                  <span key={index} className="keyword-tag">
-                    {typeof keyword === 'string' ? keyword : keyword.keyword || ''}
-                  </span>
-                ))
-              ) : (
-                <span className="compact-empty">Не настроены</span>
-              )}
-            </div>
+            <KeywordsManagerCompact 
+              apiBase={apiBase}
+              onUpdate={onUpdate}
+              keywords={keywords}
+            />
+          </div>
+
+          {/* Миграция базы данных (временно для добавления поля phone) */}
+          <div className="info-section">
+            <DatabaseMigration apiBase={apiBase} />
           </div>
 
           <div className="info-section">
-            <h4>� Получатели</h4>
+            <h4>📧 Получатели</h4>
             <div className="compact-recipients">
               <span className="recipient-count">Всего: {recipients.length}</span>
               {recipients.length > 0 && (
@@ -401,10 +413,10 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
             className="input-compact"
           />
           <input
-            type="text"
-            placeholder="@username"
-            value={newRecipient.username}
-            onChange={(e) => setNewRecipient({...newRecipient, username: e.target.value})}
+            type="tel"
+            placeholder="+77771234567"
+            value={newRecipient.phone}
+            onChange={(e) => setNewRecipient({...newRecipient, phone: e.target.value})}
             className="input-compact"
           />
           <select
@@ -437,8 +449,8 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
                   <span className="recipient-name-compact">
                     {recipient.name}
                   </span>
-                  <span className="recipient-username-compact">
-                    @{recipient.username}
+                  <span className="recipient-phone-compact">
+                    {recipient.phone || recipient.username ? (recipient.phone || `@${recipient.username}`) : 'Не указан'}
                   </span>
                   <span className="recipient-category-compact">
                     {recipient.category}

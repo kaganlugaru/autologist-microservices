@@ -4,6 +4,7 @@ import MessageList from './components/MessageList';
 import Statistics from './components/Statistics';
 import TelegramChatManager from './components/TelegramChatManager';
 import './App.css';
+import './components/KeywordsManagerCompact.css';
 
 // Получаем URL бэкенда из переменных окружения или используем локальный для разработки
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -51,9 +52,9 @@ function App() {
   }, []);
 
   const tabs = [
-    { id: 'messages', name: '💬 Сообщения', icon: '💬', component: MessageList },
-    { id: 'chats', name: '📱 Telegram Чаты', icon: '📱', component: TelegramChatManager },
-    { id: 'statistics', name: '⚙️ Управление', icon: '⚙️', component: Statistics }
+    { id: 'messages', name: 'Сообщения', icon: '💬' },
+    { id: 'chats', name: 'Telegram Чаты', icon: '📱' },
+    { id: 'statistics', name: 'Управление', icon: '⚙️' }
   ];
 
   return (

@@ -218,11 +218,21 @@ app.put('/api/keywords/:id', async (req, res) => {
 app.delete('/api/keywords/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Проверяем, является ли id числом (ID) или строкой (keyword)
+    const isNumericId = !isNaN(parseInt(id));
+    
+    let query = db.supabase.from('keywords').delete();
+    
+    if (isNumericId) {
+      // Удаляем по ID
+      query = query.eq('id', parseInt(id));
+    } else {
+      // Удаляем по тексту ключевого слова
+      query = query.eq('keyword', decodeURIComponent(id));
+    }
 
-    const { error } = await db.supabase
-      .from('keywords')
-      .delete()
-      .eq('id', id);
+    const { error } = await query;
 
     if (error) throw error;
 
@@ -295,22 +305,46 @@ app.get('/api/recipient-categories', async (req, res) => {
 // Добавить нового получателя по категории
 app.post('/api/recipient-categories', async (req, res) => {
   try {
-    const { name, username, category, active } = req.body;
+    const { name, username, phone, category, active } = req.body;
 
-    // Валидация обязательных полей
-    if (!name || !username || !category) {
+    // Валидация обязательных полей (phone или username)
+    if (!name || (!phone && !username) || !category) {
       return res.status(400).json({
         success: false,
-        error: 'Обязательные поля: name, username, category'
+        error: 'Обязательные поля: name, phone (или username), category'
       });
     }
 
+    // Валидация номера телефона если он предоставлен
+    if (phone) {
+      const phoneRegex = /^\+\d{10,15}$/;
+      if (!phoneRegex.test(phone)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Номер телефона должен начинаться с + и содержать 10-15 цифр'
+        });
+      }
+    }
+
     // Убираем @ из username если есть
-    const cleanUsername = username.replace('@', '').trim();
+    const cleanUsername = username ? username.replace('@', '').trim() : null;
+
+    // Если username не предоставлен, но есть phone, создаем username на основе phone
+    let finalUsername = cleanUsername;
+    if (!finalUsername && phone) {
+      // Создаем username из номера телефона (убираем + и берем последние 9 цифр)
+      finalUsername = 'phone_' + phone.replace('+', '').slice(-9);
+    }
+    
+    // Если все еще нет username, используем пустую строку
+    if (!finalUsername) {
+      finalUsername = '';
+    }
 
     const recipientData = {
       name: name.trim(),
-      username: cleanUsername,
+      username: finalUsername,
+      phone: phone ? phone.trim() : null,
       category: category.trim(),
       active: active !== false // по умолчанию true
     };
@@ -391,6 +425,41 @@ app.delete('/api/recipient-categories/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Ошибка удаления получателя по категории:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Миграция: добавление поля phone
+app.post('/api/migrate-phone-field', async (req, res) => {
+  try {
+    // Проверяем, существует ли уже поле phone
+    const { error: testError } = await db.supabase
+      .from('recipient_categories')
+      .select('phone')
+      .limit(1);
+      
+    if (testError && testError.message.includes('column "phone" does not exist')) {
+      return res.json({
+        success: false,
+        error: 'Добавьте поле "phone" (VARCHAR) в таблицу recipient_categories через Supabase Dashboard',
+        needsManualMigration: true,
+        instructions: [
+          '1. Откройте Supabase Dashboard',
+          '2. Перейдите в Table Editor → recipient_categories',
+          '3. Нажмите "Add Column"',
+          '4. Name: phone, Type: varchar, можно nullable'
+        ]
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Поле phone уже существует или миграция не требуется'
+    });
+  } catch (error) {
     res.status(500).json({
       success: false,
       error: error.message
