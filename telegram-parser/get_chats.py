@@ -7,6 +7,8 @@ import asyncio
 import os
 import json
 import sys
+import traceback
+import glob
 from datetime import datetime
 from telethon import TelegramClient
 from dotenv import load_dotenv
@@ -115,13 +117,50 @@ async def get_telegram_chats():
 async def main():
     """Основная функция для вызова из Node.js"""
     try:
+        logger.info("🚀 ================================")
+        logger.info("🚀 PYTHON: Скрипт get_chats.py запущен")
+        logger.info("🚀 ================================")
+        logger.info(f"📅 Время: {datetime.now()}")
+        logger.info(f"📂 Рабочая папка: {os.getcwd()}")
+        logger.info(f"🐍 Python версия: {sys.version}")
+        
+        # Проверяем переменные окружения
+        api_id = os.getenv('TELEGRAM_API_ID')
+        api_hash = os.getenv('TELEGRAM_API_HASH')
+        logger.info(f"🔑 API ID доступен: {'ДА' if api_id else 'НЕТ'}")
+        logger.info(f"🔑 API HASH доступен: {'ДА' if api_hash else 'НЕТ'}")
+        
+        # Ищем файлы сессий
+        session_files = []
+        search_patterns = ['*.session', '../*.session']
+        for pattern in search_patterns:
+            import glob
+            found = glob.glob(pattern)
+            session_files.extend(found)
+        
+        logger.info(f"📁 Найдено файлов сессий: {len(session_files)}")
+        for session_file in session_files:
+            size = os.path.getsize(session_file) if os.path.exists(session_file) else 0
+            logger.info(f"  📄 {session_file} ({size} байт)")
+        
         chats = await get_telegram_chats()
+        
+        if chats:
+            logger.info(f"✅ Успешно получено {len(chats)} чатов")
+            logger.info("📋 Список чатов:")
+            for i, chat in enumerate(chats[:5]):  # Показываем первые 5
+                logger.info(f"  {i+1}. {chat.get('title', 'N/A')} (ID: {chat.get('id', 'N/A')})")
+            if len(chats) > 5:
+                logger.info(f"  ... и еще {len(chats) - 5} чатов")
+        else:
+            logger.error("❌ Не удалось получить чаты")
         
         # Выводим результат в JSON формате в stdout
         print(json.dumps(chats, ensure_ascii=False, indent=2))
         
     except Exception as e:
         logger.error(f"❌ Критическая ошибка: {e}")
+        logger.error(f"🔍 Traceback: {traceback.format_exc()}")
         print("[]")  # Возвращаем пустой массив в случае ошибки
 
 if __name__ == "__main__":

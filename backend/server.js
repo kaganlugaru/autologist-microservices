@@ -666,6 +666,15 @@ app.get('/api/stats', async (req, res) => {
 
 // Получить доступные чаты из Telegram
 app.get('/api/telegram/chats', async (req, res) => {
+  console.log('');
+  console.log('🔥 ================================');
+  console.log('🔥 ЗАПРОС TELEGRAM CHATS ПОЛУЧЕН');
+  console.log('🔥 ================================');
+  console.log('📅 Время:', new Date().toISOString());
+  console.log('🌐 User-Agent:', req.headers['user-agent']);
+  console.log('🔗 Origin:', req.headers.origin);
+  console.log('📍 IP:', req.ip || req.connection.remoteAddress);
+  
   try {
     console.log('🔍 Запрос реальных чатов из Telegram аккаунта...');
     
@@ -675,7 +684,29 @@ app.get('/api/telegram/chats', async (req, res) => {
     
     const pythonScript = path.join(__dirname, '..', 'telegram-parser', 'get_chats.py');
     
-    console.log('🐍 Запуск Python скрипта:', pythonScript);
+    console.log('🐍 Конфигурация Python:');
+    console.log('  📁 Script path:', pythonScript);
+    console.log('  📂 Working dir:', path.join(__dirname, '..', 'telegram-parser'));
+    console.log('  🔑 Env vars present:', {
+      TELEGRAM_API_ID: !!process.env.TELEGRAM_API_ID,
+      TELEGRAM_API_HASH: !!process.env.TELEGRAM_API_HASH,
+      NODE_ENV: process.env.NODE_ENV,
+      RENDER: !!process.env.RENDER
+    });
+    
+    // Проверяем существование скрипта
+    const fs = require('fs');
+    if (!fs.existsSync(pythonScript)) {
+      console.error('❌ Python скрипт не найден:', pythonScript);
+      return res.status(500).json({
+        success: false,
+        error: 'Python скрипт не найден',
+        scriptPath: pythonScript
+      });
+    }
+    console.log('✅ Python скрипт найден');
+    
+    console.log('🚀 Запуск Python процесса...');
     
     const pythonProcess = spawn('python', [pythonScript], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),
@@ -686,81 +717,110 @@ app.get('/api/telegram/chats', async (req, res) => {
     let errorOutput = '';
     
     pythonProcess.stdout.on('data', (data) => {
-      output += data.toString();
+      const chunk = data.toString();
+      output += chunk;
+      console.log('📤 Python stdout:', chunk.trim());
     });
     
     pythonProcess.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-      console.log('🐍 Python лог:', data.toString().trim());
+      const chunk = data.toString();
+      errorOutput += chunk;
+      console.log('� Python stderr:', chunk.trim());
     });
     
     pythonProcess.on('close', (code) => {
-      console.log(`🐍 Python процесс завершен с кодом: ${code}`);
+      console.log('');
+      console.log('🏁 Python процесс завершен');
+      console.log('  📊 Exit code:', code);
+      console.log('  📝 Output length:', output.length);
+      console.log('  ❌ Error length:', errorOutput.length);
       
       if (code === 0) {
         try {
+          console.log('🔍 Парсинг JSON вывода...');
+          console.log('📄 Raw output:', output.substring(0, 500) + (output.length > 500 ? '...' : ''));
+          
           const chats = JSON.parse(output);
           console.log(`✅ Получено ${chats.length} чатов из Telegram`);
+          console.log('📋 Первые 3 чата:', chats.slice(0, 3).map(c => ({ id: c.id, title: c.title })));
           
           res.json({
             success: true,
             data: chats,
-            message: `Загружено ${chats.length} чатов из вашего Telegram аккаунта`
+            message: `Загружено ${chats.length} чатов из вашего Telegram аккаунта`,
+            debug: {
+              pythonExitCode: code,
+              outputLength: output.length,
+              errorLength: errorOutput.length
+            }
           });
         } catch (parseError) {
-          console.error('❌ Ошибка парсинга JSON:', parseError);
-          console.error('Вывод Python:', output);
+          console.error('❌ Ошибка парсинга JSON:', parseError.message);
+          console.error('📄 Raw output was:', output);
           
           res.status(500).json({
             success: false,
             error: 'Ошибка обработки данных от Telegram API',
             details: parseError.message,
-            output: output,
+            rawOutput: output,
             errorOutput: errorOutput
           });
         }
       } else {
-        console.error('❌ Python скрипт завершился с ошибкой:', errorOutput);
+        console.error('❌ Python скрипт завершился с ошибкой');
+        console.error('📄 Error output:', errorOutput);
         
         res.status(500).json({
           success: false,
           error: 'Ошибка получения чатов из Telegram',
           details: errorOutput,
-          pythonCode: code
+          pythonCode: code,
+          rawOutput: output
         });
       }
     });
     
     pythonProcess.on('error', (error) => {
-      console.error('❌ Ошибка запуска Python процесса:', error);
+      console.error('❌ Ошибка запуска Python процесса:', error.message);
+      console.error('🔍 Возможные причины:');
+      console.error('  - Python не установлен');
+      console.error('  - Неправильный PATH');
+      console.error('  - Отсутствуют зависимости');
       
       res.status(500).json({
         success: false,
         error: 'Python недоступен в данном окружении',
         details: error.message,
-        suggestion: 'Установите Python и зависимости: pip install telethon python-dotenv'
+        suggestions: [
+          'Установите Python',
+          'Добавьте Python в PATH',
+          'Установите зависимости: pip install telethon python-dotenv'
+        ]
       });
     });
     
     // Таймаут для предотвращения зависания
     setTimeout(() => {
+      console.log('⏰ Достигнут таймаут 30 секунд');
       pythonProcess.kill();
-      console.log('⏰ Python процесс остановлен по таймауту');
       
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
           error: 'Превышено время ожидания ответа от Telegram API (30 секунд)',
-          timeout: true
+          timeout: true,
+          partialOutput: output,
+          partialError: errorOutput
         });
       }
     }, 30000); // 30 секунд таймаут
     
   } catch (error) {
-    console.error('❌ Ошибка запуска получения чатов:', error);
+    console.error('❌ Критическая ошибка в обработчике:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      stack: error.stack
     });
   }
 });

@@ -27,21 +27,54 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
 
   // Загрузить доступные чаты из Telegram аккаунта
   const loadAvailableChats = async () => {
+    console.log('');
+    console.log('🔥 ================================');
+    console.log('🔥 FRONTEND: Загрузка чатов начата');
+    console.log('🔥 ================================');
+    console.log('📅 Время:', new Date().toISOString());
+    console.log('🔗 API Base:', apiBase);
+    console.log('📍 Endpoint:', `${apiBase}/telegram/chats`);
+    
     try {
       setLoadingChats(true);
-      console.log('Загрузка чатов из:', `${apiBase}/telegram/chats`);
+      console.log('⏳ Устанавливаем loadingChats = true');
+      
+      console.log('🌐 Отправляем HTTP запрос...');
       const response = await axios.get(`${apiBase}/telegram/chats`);
-      console.log('Ответ сервера:', response.data);
+      
+      console.log('✅ Ответ получен:');
+      console.log('  📊 Status:', response.status);
+      console.log('  📋 Headers:', response.headers);
+      console.log('  📄 Data keys:', Object.keys(response.data || {}));
+      console.log('  🎯 Success:', response.data?.success);
+      console.log('  📝 Message:', response.data?.message);
+      console.log('  📊 Data length:', response.data?.data?.length || 0);
+      
+      if (response.data?.data) {
+        console.log('📋 Первые 3 чата:');
+        response.data.data.slice(0, 3).forEach((chat, index) => {
+          console.log(`  ${index + 1}. ${chat.title} (ID: ${chat.id})`);
+        });
+      }
+      
       const data = response.data?.data || [];
+      console.log(`🎯 Устанавливаем ${data.length} чатов в state`);
       setAvailableChats(data);
-      console.log('Загружено чатов:', data.length);
+      
     } catch (error) {
-      console.error('Ошибка загрузки доступных чатов:', error);
-      console.error('Статус ошибки:', error.response?.status);
-      console.error('Данные ошибки:', error.response?.data);
+      console.error('');
+      console.error('❌ ================================');
+      console.error('❌ FRONTEND: Ошибка загрузки чатов');
+      console.error('❌ ================================');
+      console.error('📊 Status:', error.response?.status);
+      console.error('📄 Data:', error.response?.data);
+      console.error('📝 Message:', error.message);
+      console.error('🔍 Full error:', error);
+      
       alert(`Ошибка при загрузке чатов: ${error.response?.data?.message || error.message}`);
       setAvailableChats([]);
     } finally {
+      console.log('🏁 Устанавливаем loadingChats = false');
       setLoadingChats(false);
     }
   };
