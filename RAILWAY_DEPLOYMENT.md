@@ -26,7 +26,7 @@ Telegram парсер подготовлен для развертывания �
 3. **Настройте:**
    - **Service Name:** `telegram-parser`
    - **Root Directory:** `telegram-parser`
-   - **Start Command:** `python3 telegram_parser.py`
+   - **Start Command:** `python telegram_parser.py` (Railway автоматически найдет Python через Dockerfile)
 
 ### Шаг 3: Настройка переменных окружения
 
