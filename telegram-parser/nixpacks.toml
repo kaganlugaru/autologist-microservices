@@ -1,10 +1,13 @@
 [phases.setup]
-nixPkgs = ['python310', 'python310Packages.pip']
+nixPkgs = [
+	'python310',
+	'python310Packages.pip',
+	'python310Packages.telethon',
+	'python310Packages.python-dotenv'
+]
 
 [phases.install]
-cmds = [
-	'pip install -r requirements.txt'
-]
+cmds = []
 
 [phases.build]
 cmds = ['echo "Build completed"']
