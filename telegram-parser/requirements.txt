@@ -1,4 +1,5 @@
 # Telegram Parser Dependencies
+# Force rebuild: 2025-11-07 - Switch to Python 3.10 for GLIBC compatibility
 telethon>=1.24.0
 python-dotenv>=1.0.0
 psycopg2-binary>=2.9.0
