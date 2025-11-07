@@ -691,11 +691,11 @@ app.get('/api/telegram/chats', async (req, res) => {
     const { spawn } = require('child_process');
     const path = require('path');
     
-    const pythonScript = path.join(__dirname, '..', 'telegram-parser', 'get_chats.py');
+    const pythonScript = path.join(__dirname, 'get_chats.py');  // Теперь в той же папке
     
     console.log('🐍 Конфигурация Python:');
     console.log('  📁 Script path:', pythonScript);
-    console.log('  📂 Working dir:', path.join(__dirname, '..', 'telegram-parser'));
+    console.log('  📂 Working dir:', __dirname);  // Работаем в папке backend
     console.log('  🔑 Env vars present:', {
       TELEGRAM_API_ID: !!process.env.TELEGRAM_API_ID,
       TELEGRAM_API_HASH: !!process.env.TELEGRAM_API_HASH,
@@ -735,12 +735,12 @@ app.get('/api/telegram/chats', async (req, res) => {
     console.log('� Запускаем Python скрипт для получения чатов...');
     
     const pythonProcess = spawn('python', ['get_chats.py'], {
-      cwd: path.join(__dirname, '..', 'telegram-parser'),
+      cwd: __dirname,  // Работаем в папке backend
       env: {
         ...process.env,
         TELEGRAM_API_ID: process.env.TELEGRAM_API_ID,
         TELEGRAM_API_HASH: process.env.TELEGRAM_API_HASH,
-        PYTHONPATH: path.join(__dirname, '..', 'telegram-parser'),
+        PYTHONPATH: __dirname,  // Python path указывает на backend
         PYTHONUNBUFFERED: '1',
         PYTHONIOENCODING: 'utf-8',  // Исправляем кодировку для Windows
         PYTHONLEGACYWINDOWSSTDIO: '1'  // Совместимость с Windows консолью
