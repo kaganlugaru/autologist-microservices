@@ -14,6 +14,16 @@ from telethon import TelegramClient
 from dotenv import load_dotenv
 import logging
 
+# Исправляем кодировку для Windows консоли
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except AttributeError:
+    # Для старых версий Python
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
+
 # Импорт утилиты для работы с сессией
 try:
     from session_helper import setup_session_from_env
@@ -156,8 +166,16 @@ async def main():
         else:
             logger.error("❌ Не удалось получить чаты")
         
-        # Выводим результат в JSON формате в stdout
-        print(json.dumps(chats, ensure_ascii=False, indent=2))
+        # Выводим результат в JSON формате в stdout с fallback для кодировки
+        try:
+            print(json.dumps(chats, ensure_ascii=False, indent=2))
+        except UnicodeEncodeError as ue:
+            logger.warning(f"⚠️ Проблема с кодировкой: {ue}")
+            logger.info("🔄 Используем ASCII-безопасный вывод...")
+            print(json.dumps(chats, ensure_ascii=True, indent=2))
+        except Exception as e:
+            logger.error(f"❌ Ошибка вывода JSON: {e}")
+            print("[]")  # Fallback к пустому массиву
         
     except Exception as e:
         logger.error(f"❌ Критическая ошибка: {e}")

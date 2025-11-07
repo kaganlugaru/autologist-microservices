@@ -730,42 +730,91 @@ app.get('/api/telegram/chats', async (req, res) => {
       });
     }
     
-    // ВРЕМЕННО ОТКЛЮЧАЕМ PYTHON - возвращаем демо данные
+    // ЗАПУСКАЕМ РЕАЛЬНЫЙ PYTHON СКРИПТ С api_chats.session
     console.log('✅ Переменные окружения настроены');
-    console.log('🔄 Python временно отключен - возвращаем демо-чаты');
+    console.log('� Запускаем Python скрипт для получения чатов...');
     
-    const demoChats = [
-      {
-        id: '-1001656314936',
-        title: 'CarGoRuqsat',
-        participantsCount: 15905,
-        type: 'channel',
-        accessible: true,
-        username: 'cargoruqsat'
-      },
-      {
-        id: '-1002658313300',
-        title: 'Toshkent olmaliq taksi',
-        participantsCount: 8499,
-        type: 'channel',
-        accessible: true,
-        username: 'taksi_olmaliq_toshkent6161'
-      },
-      {
-        id: '-1001631736811',
-        title: 'Чат Калжат (Дулаты КНР)',
-        participantsCount: 3617,
-        type: 'channel',
-        accessible: true,
-        username: 'kaljatchat'
+    const pythonProcess = spawn('python', ['get_chats.py'], {
+      cwd: path.join(__dirname, '..', 'telegram-parser'),
+      env: {
+        ...process.env,
+        TELEGRAM_API_ID: process.env.TELEGRAM_API_ID,
+        TELEGRAM_API_HASH: process.env.TELEGRAM_API_HASH,
+        PYTHONPATH: path.join(__dirname, '..', 'telegram-parser'),
+        PYTHONUNBUFFERED: '1',
+        PYTHONIOENCODING: 'utf-8',  // Исправляем кодировку для Windows
+        PYTHONLEGACYWINDOWSSTDIO: '1'  // Совместимость с Windows консолью
       }
-    ];
-    
-    return res.json({
-      success: true,
-      data: demoChats,
-      message: `✅ Демо режим: ${demoChats.length} тестовых чатов (Python отключен)`,
-      demo: true
+    });
+
+    let pythonOutput = '';
+    let pythonError = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      const output = data.toString();
+      pythonOutput += output;
+      console.log('🐍 Python stdout:', output.trim());
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      const error = data.toString();
+      pythonError += error;
+      console.error('🐍 Python stderr:', error.trim());
+    });
+
+    pythonProcess.on('close', (code) => {
+      console.log(`🐍 Python процесс завершен с кодом: ${code}`);
+      
+      if (code === 0) {
+        try {
+          // Ищем JSON в выводе Python
+          const jsonStart = pythonOutput.indexOf('[');
+          const jsonEnd = pythonOutput.lastIndexOf(']') + 1;
+          
+          if (jsonStart >= 0 && jsonEnd > jsonStart) {
+            const jsonStr = pythonOutput.substring(jsonStart, jsonEnd);
+            const chatsData = JSON.parse(jsonStr);
+            
+            console.log(`✅ Успешно получено ${chatsData.length} чатов из Python`);
+            
+            return res.json({
+              success: true,
+              data: chatsData,
+              message: `✅ Получено ${chatsData.length} чатов из Telegram API`,
+              source: 'telegram_api',
+              pythonOutput: pythonOutput.split('\n').slice(-10) // последние 10 строк для дебага
+            });
+          } else {
+            throw new Error('JSON данные не найдены в выводе Python');
+          }
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON:', parseError.message);
+          return res.status(500).json({
+            success: false,
+            error: 'Ошибка парсинга ответа Python',
+            details: parseError.message,
+            pythonOutput: pythonOutput,
+            pythonError: pythonError
+          });
+        }
+      } else {
+        console.error('❌ Python скрипт завершился с ошибкой');
+        return res.status(500).json({
+          success: false,
+          error: `Python скрипт завершился с кодом ${code}`,
+          pythonOutput: pythonOutput,
+          pythonError: pythonError
+        });
+      }
+    });
+
+    pythonProcess.on('error', (error) => {
+      console.error('❌ Ошибка запуска Python:', error.message);
+      return res.status(500).json({
+        success: false,
+        error: 'Ошибка запуска Python скрипта',
+        details: error.message
+      });
     });
     
   } catch (error) {
