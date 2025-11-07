@@ -68,18 +68,27 @@ app.get('/api/status', async (req, res) => {
 
 // ===== СООБЩЕНИЯ =====
 
-// Получить последние сообщения
+// Получить последние сообщения с поддержкой фильтров
 app.get('/api/messages', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 1000;
-    const messages = await db.getRecentMessages(limit);
+    const since = req.query.since; // ISO строка даты для фильтра за период
+    const keywords = req.query.keywords; // Ключевые слова для фильтрации
+    
+    const messages = await db.getRecentMessages(limit, since, keywords);
     
     res.json({
       success: true,
       data: messages,
-      count: messages.length
+      count: messages.length,
+      filters: {
+        limit,
+        since: since || null,
+        keywords: keywords || null
+      }
     });
   } catch (error) {
+    console.error('Ошибка получения сообщений:', error);
     res.status(500).json({
       success: false,
       error: error.message

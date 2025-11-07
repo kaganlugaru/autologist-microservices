@@ -71,18 +71,32 @@ class DatabaseManager {
   }
 
   /**
-   * Получить последние сообщения
+   * Получить последние сообщения с фильтрами
    */
-  async getRecentMessages(limit = 1000) {
+  async getRecentMessages(limit = 1000, since = null, keywords = null) {
     try {
-      const { data, error } = await this.supabase
+      let query = this.supabase
         .from('messages')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .order('created_at', { ascending: false });
+
+      // Фильтр по дате (например, за последние 24 часа)
+      if (since) {
+        query = query.gte('created_at', since);
+      }
+
+      // Фильтр по ключевым словам
+      if (keywords) {
+        // Поиск в тексте сообщения (case-insensitive)
+        query = query.ilike('message_text', `%${keywords}%`);
+      }
+
+      query = query.limit(limit);
+
+      const { data, error } = await query;
 
       if (error) throw error;
-      return data;
+      return data || [];
     } catch (error) {
       console.error('Ошибка получения сообщений:', error);
       throw error;

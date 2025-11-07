@@ -19,50 +19,119 @@ function App() {
   const [chats, setChats] = useState([]);
   const [keywords, setKeywords] = useState([]);
   const [stats, setStats] = useState({});
-  const [loading, setLoading] = useState(false);
+  
+  // Отдельные состояния загрузки
+  const [essentialLoading, setEssentialLoading] = useState(true);
+  const [chatsLoading, setChatsLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
+  
   const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
+  const [keywordFilter, setKeywordFilter] = useState('');
 
-  // Загрузка данных с retry механизмом
-  const loadData = async (retryCount = 0) => {
-    setLoading(true);
+  // Определение типа устройства и лимитов
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const getMessagesLimit = () => {
+    if (keywordFilter) return 1000; // При фильтре - больше данных за 24ч
+    return isMobile ? 50 : 300; // Мобильные 50, десктоп 300
+  };
+
+  // КРИТИЧНАЯ ЗАГРУЗКА: Сообщения + Ключевые слова (показываем интерфейс сразу)
+  const loadEssentialData = async () => {
+    setEssentialLoading(true);
     try {
-      const [messagesRes, chatsRes, keywordsRes, statsRes] = await Promise.all([
-        axios.get(`${API_BASE}/messages?limit=1000`),
-        axios.get(`${API_BASE}/chats`),
-        axios.get(`${API_BASE}/keywords`),
-        axios.get(`${API_BASE}/stats`)
+      const limit = getMessagesLimit();
+      const messagesUrl = keywordFilter 
+        ? `${API_BASE}/messages?limit=${limit}&since=${get24HoursAgo()}&keywords=${encodeURIComponent(keywordFilter)}`
+        : `${API_BASE}/messages?limit=${limit}`;
+
+      const [messagesRes, keywordsRes] = await Promise.all([
+        axios.get(messagesUrl),
+        axios.get(`${API_BASE}/keywords`)
       ]);
 
       setMessages(messagesRes.data.data || []);
-      setChats(chatsRes.data.data || []);
-      // Если keywords это массив объектов, извлекаем только строки keyword
+      
+      // Обработка ключевых слов
       const keywordData = keywordsRes.data.data || [];
       const keywordStrings = keywordData.map(kw => 
         typeof kw === 'string' ? kw : kw.keyword || ''
       ).filter(kw => kw.length > 0);
       setKeywords(keywordStrings);
-      setStats(statsRes.data.data || {});
-      setLastUpdateTime(new Date()); // Обновляем время
-    } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
       
-      // Retry логика для network errors (максимум 2 попытки)
-      if (retryCount < 2 && (error.code === 'ERR_NETWORK' || error.code === 'NETWORK_ERROR')) {
-        console.log(`Повторная попытка загрузки данных... (${retryCount + 1}/2)`);
-        setTimeout(() => loadData(retryCount + 1), 2000 * (retryCount + 1)); // Увеличивающаяся задержка
-        return;
-      }
+      setLastUpdateTime(new Date());
+      
+    } catch (error) {
+      console.error('Ошибка загрузки критичных данных:', error);
+      // Показываем пустые данные, но интерфейс готов
+      setMessages([]);
+      setKeywords([]);
     } finally {
-      setLoading(false);
+      setEssentialLoading(false);
     }
   };
 
+  // LAZY LOADING: Чаты (только при переходе на вкладку)
+  const loadChatsIfNeeded = async () => {
+    if (activeTab === 'chats' && chats.length === 0) {
+      setChatsLoading(true);
+      try {
+        const chatsRes = await axios.get(`${API_BASE}/chats`);
+        setChats(chatsRes.data.data || []);
+      } catch (error) {
+        console.error('Ошибка загрузки чатов:', error);
+        setChats([]);
+      } finally {
+        setChatsLoading(false);
+      }
+    }
+  };
+
+  // ФОНОВАЯ ЗАГРУЗКА: Статистика (не блокирует интерфейс)
+  const loadStatsBackground = async () => {
+    setStatsLoading(true);
+    try {
+      const statsRes = await axios.get(`${API_BASE}/stats`);
+      setStats(statsRes.data.data || {});
+    } catch (error) {
+      console.error('Статистика недоступна:', error);
+      setStats(null); // Скрываем блок статистики
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  // Вспомогательная функция для 24 часов назад
+  const get24HoursAgo = () => {
+    const yesterday = new Date();
+    yesterday.setHours(yesterday.getHours() - 24);
+    return yesterday.toISOString();
+  };
+
   useEffect(() => {
-    loadData();
-    // Автообновление каждые 30 секунд
-    const interval = setInterval(loadData, 30000);
+    // Сразу загружаем критичные данные
+    loadEssentialData();
+    
+    // Статистику загружаем в фоне через 1 секунду  
+    setTimeout(() => {
+      loadStatsBackground();
+    }, 1000);
+    
+    // Автообновление критичных данных каждые 30 секунд
+    const interval = setInterval(loadEssentialData, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Отслеживаем смену вкладок для lazy loading чатов
+  useEffect(() => {
+    loadChatsIfNeeded();
+  }, [activeTab]);
+
+  // Перезагрузка при изменении фильтра по ключевым словам
+  useEffect(() => {
+    if (keywordFilter !== '') {
+      loadEssentialData();
+    }
+  }, [keywordFilter]);
 
   const tabs = [
     { id: 'messages', name: 'Сообщения', icon: '💬' },
@@ -79,11 +148,18 @@ function App() {
         </div>
         <div className="app-actions">
           <div className="status-indicator">
-            🕐 Последнее обновление: {lastUpdateTime.toLocaleTimeString('ru-RU', { 
-              hour: '2-digit', 
-              minute: '2-digit',
-              second: '2-digit'
-            })}
+            {essentialLoading ? (
+              <span style={{color: '#ff9800'}}>� Загрузка данных...</span>
+            ) : (
+              <>
+                🕐 Обновлено: {lastUpdateTime.toLocaleTimeString('ru-RU', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                })}
+                {isMobile && <span style={{marginLeft: '10px', fontSize: '0.8em'}}>📱 Мобильный режим</span>}
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -111,7 +187,8 @@ function App() {
               chats={chats}
               keywords={keywords}
               stats={stats}
-              onUpdate={loadData}
+              loading={essentialLoading}
+              onUpdate={loadEssentialData}
               apiBase={API_BASE}
             />
           )}
@@ -121,7 +198,8 @@ function App() {
               chats={chats}
               keywords={keywords}
               stats={stats}
-              onUpdate={loadData}
+              loading={chatsLoading}
+              onUpdate={loadChatsIfNeeded}
               apiBase={API_BASE}
             />
           )}
@@ -131,7 +209,9 @@ function App() {
               chats={chats}
               keywords={keywords}
               stats={stats}
-              onUpdate={loadData}
+              statsLoading={statsLoading}
+              onUpdate={loadEssentialData}
+              onStatsUpdate={loadStatsBackground}
               apiBase={API_BASE}
             />
           )}
