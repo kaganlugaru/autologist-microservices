@@ -45,6 +45,7 @@ async def get_telegram_chats():
     
     # Ищем доступные сессии (в порядке приоритета)
     session_candidates = [
+        'api_chats',           # Специальная сессия для API (приоритет!)
         'railway_production',  # Railway production
         '../railway_production',  # Из корня проекта
         'autologist_session',  # Старая сессия

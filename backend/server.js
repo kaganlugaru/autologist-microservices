@@ -721,35 +721,45 @@ app.get('/api/telegram/chats', async (req, res) => {
       });
     }
     
-    // Проверяем существование скрипта
-    const fs = require('fs');
-    if (!fs.existsSync(pythonScript)) {
-      console.error('❌ Python скрипт не найден:', pythonScript);
-      
-      // ВРЕМЕННЫЙ FALLBACK: демо-данные если скрипт не найден
-      console.log('🔄 Fallback: возвращаем демо-данные из-за отсутствия скрипта');
-      const fallbackChats = [
-        {
-          id: '-1002222222222',
-          title: '⚠️ Скрипт не найден - демо чат',
-          participantsCount: 200,
-          type: 'supergroup',
-          accessible: true
-        }
-      ];
-      
-      return res.json({
-        success: true,
-        data: fallbackChats,
-        message: '⚠️ Python скрипт не найден - показаны демо-данные',
-        error: 'Python script not found',
-        scriptPath: pythonScript,
-        suggestion: 'Проверьте что файл telegram-parser/get_chats.py существует'
-      });
-    }
-    console.log('✅ Python скрипт найден');
+    // ВРЕМЕННО ОТКЛЮЧАЕМ PYTHON - возвращаем демо данные
+    console.log('✅ Переменные окружения настроены');
+    console.log('🔄 Python временно отключен - возвращаем демо-чаты');
     
-    console.log('🚀 Запуск Python процесса...');
+    const demoChats = [
+      {
+        id: '-1001656314936',
+        title: 'CarGoRuqsat',
+        participantsCount: 15905,
+        type: 'channel',
+        accessible: true,
+        username: 'cargoruqsat'
+      },
+      {
+        id: '-1002658313300',
+        title: 'Toshkent olmaliq taksi',
+        participantsCount: 8499,
+        type: 'channel',
+        accessible: true,
+        username: 'taksi_olmaliq_toshkent6161'
+      },
+      {
+        id: '-1001631736811',
+        title: 'Чат Калжат (Дулаты КНР)',
+        participantsCount: 3617,
+        type: 'channel',
+        accessible: true,
+        username: 'kaljatchat'
+      }
+    ];
+    
+    return res.json({
+      success: true,
+      data: demoChats,
+      message: `✅ Демо режим: ${demoChats.length} тестовых чатов (Python отключен)`,
+      demo: true
+    });
+    
+  } catch (error) {
     
     const pythonProcess = spawn('python3', [pythonScript], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),

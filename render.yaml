@@ -3,7 +3,7 @@ services:
     name: autologist-microservices
     env: node
     plan: free
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
