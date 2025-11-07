@@ -901,31 +901,76 @@ app.post('/api/parser/start', async (req, res) => {
       });
     }
 
-    console.log('🚀 Эмуляция запуска Python парсера (Python отключен)...');
+    console.log('🚀 Запуск Python парсера...');
     
-    // ВРЕМЕННО: Эмулируем запуск парсера без реального Python процесса
-    // Это позволяет избежать GLIBC ошибок на Render
-    console.log('⚠️ Python временно отключен из-за GLIBC 2.38 конфликта на Render');
-    console.log('✅ Используется эмуляция парсера для тестирования');
+    // Путь к нашему улучшенному Python парсеру
+    const parserPath = path.join(__dirname, '..', 'telegram-parser', 'telegram_parser.py');
+    console.log(`📁 Путь к парсеру: ${parserPath}`);
     
-    // Эмулируем "успешный" запуск парсера
-    parserProcess = null; // Нет реального процесса
-    
-    // Обновляем статус как будто парсер запущен
+    // Запускаем Python скрипт с флагом для мониторинга
+    parserProcess = spawn('python', [parserPath, '--monitor'], {
+      cwd: path.join(__dirname, '..', 'telegram-parser'),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    console.log(`🆔 Parser PID: ${parserProcess.pid}`);
+
+    // Обработка вывода парсера
+    parserProcess.stdout.on('data', (data) => {
+      const output = data.toString().trim();
+      console.log(`📊 Parser: ${output}`);
+      
+      // Обновляем активность парсера
+      parserStatus.lastActivity = new Date().toISOString();
+      
+      // Пытаемся извлечь количество обработанных сообщений из логов
+      const processedMatch = output.match(/Обработано сообщений: (\d+)/);
+      if (processedMatch) {
+        parserStatus.messagesProcessed = parseInt(processedMatch[1]);
+      }
+    });
+
+    parserProcess.stderr.on('data', (data) => {
+      const output = data.toString().trim();
+      
+      // Проверяем, является ли это ошибкой или просто логом
+      if (output.includes('ERROR') || output.includes('CRITICAL') || output.includes('Exception')) {
+        console.error(`❌ Parser Error: ${output}`);
+      } else {
+        console.log(`📊 Parser Log: ${output}`);
+      }
+      
+      // Обновляем активность парсера
+      parserStatus.lastActivity = new Date().toISOString();
+    });
+
+    parserProcess.on('close', (code) => {
+      console.log(`🔚 Parser process closed with code ${code}`);
+      parserStatus.running = false;
+      parserStatus.pid = null;
+      parserProcess = null;
+    });
+
+    parserProcess.on('error', (error) => {
+      console.error(`❌ Parser process error: ${error.message}`);
+      parserStatus.running = false;
+      parserStatus.pid = null;
+      parserProcess = null;
+    });
+
+    // Обновляем статус
     parserStatus = {
       running: true,
       startTime: new Date().toISOString(),
       messagesProcessed: 0,
       lastActivity: new Date().toISOString(),
-      pid: 'emulated', // Эмулированный PID
-      mode: 'demo' // Демо режим
+      pid: parserProcess.pid
     };
 
     res.json({
       success: true,
-      message: '⚠️ Парсер запущен в демо-режиме (Python отключен из-за GLIBC конфликта)',
-      status: parserStatus,
-      note: 'Для полной функциональности требуется решение GLIBC проблемы'
+      message: 'Парсер запущен',
+      status: parserStatus
     });
 
   } catch (error) {
@@ -948,17 +993,13 @@ app.post('/api/parser/stop', (req, res) => {
       });
     }
 
-    console.log('⏹️ Остановка эмулированного парсера...');
+    console.log('⏹️ Остановка Python парсера...');
     
-    // В демо режиме просто обновляем статус
-    if (parserStatus.mode === 'demo') {
-      console.log('✅ Эмулированный парсер остановлен (не было реального Python процесса)');
-    } else {
-      // Завершаем процесс парсера если он запущен (для обратной совместимости)
-      if (parserProcess) {
-        parserProcess.kill('SIGTERM');
-        parserProcess = null;
-      }
+    // Завершаем процесс парсера если он запущен
+    if (parserProcess) {
+      console.log(`🔥 Завершаем процесс с PID: ${parserProcess.pid}`);
+      parserProcess.kill('SIGTERM');
+      parserProcess = null;
     }
 
     parserStatus.running = false;
@@ -966,9 +1007,7 @@ app.post('/api/parser/stop', (req, res) => {
 
     res.json({
       success: true,
-      message: parserStatus.mode === 'demo' ? 
-        '⚠️ Эмулированный парсер остановлен (Python был отключен)' : 
-        'Парсер остановлен',
+      message: 'Парсер остановлен',
       status: parserStatus
     });
 
@@ -985,29 +1024,68 @@ app.post('/api/parser/stop', (req, res) => {
 // Разовый парсинг
 app.post('/api/parser/run-once', async (req, res) => {
   try {
-    console.log('🔄 Эмуляция разового парсинга (Python отключен)...');
+    console.log('🔄 Запуск разового парсинга...');
     
-    // ВРЕМЕННО: Эмулируем разовый парсинг без реального Python процесса
-    // Это позволяет избежать GLIBC ошибок на Render
-    console.log('⚠️ Python временно отключен из-за GLIBC 2.38 конфликта на Render');
-    console.log('✅ Возвращаем эмулированный результат разового парсинга');
+    // Путь к нашему улучшенному Python парсеру
+    const parserPath = path.join(__dirname, '..', 'telegram-parser', 'telegram_parser.py');
     
-    // Эмулируем "успешный" разовый парсинг
-    setTimeout(() => {
-      res.json({
-        success: true,
-        message: '⚠️ Разовый парсинг выполнен в демо-режиме (Python отключен)',
-        result: {
-          messagesProcessed: 0, // Демо: 0 сообщений обработано
-          messagesSaved: 0,     // Демо: 0 сообщений сохранено
-          exitCode: 0,          // Эмулируем успешное завершение
-          timestamp: new Date().toISOString(),
-          mode: 'demo'          // Демо режим
-        },
-        note: 'Для полной функциональности требуется решение GLIBC проблемы',
-        suggestion: 'Парсер будет работать после исправления Python окружения'
+    // Запускаем Python скрипт без флага --monitor (разовое выполнение)
+    const runOnceProcess = spawn('python', [parserPath], {
+      cwd: path.join(__dirname, '..', 'telegram-parser'),
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    let output = '';
+    let errorOutput = '';
+
+    // Собираем вывод
+    runOnceProcess.stdout.on('data', (data) => {
+      const text = data.toString();
+      output += text;
+      console.log(`📊 RunOnce: ${text.trim()}`);
+    });
+
+    runOnceProcess.stderr.on('data', (data) => {
+      const text = data.toString();
+      errorOutput += text;
+      console.error(`❌ RunOnce Error: ${text.trim()}`);
+    });
+
+    // Ждем завершения
+    runOnceProcess.on('close', (code) => {
+      if (code === 0) {
+        // Успешное завершение
+        const processedMatch = output.match(/Обработано сообщений: (\d+)/);
+        const savedMatch = output.match(/Сохранено новых: (\d+)/);
+        
+        res.json({
+          success: true,
+          message: 'Разовый парсинг завершен',
+          result: {
+            messagesProcessed: processedMatch ? parseInt(processedMatch[1]) : 0,
+            messagesSaved: savedMatch ? parseInt(savedMatch[1]) : 0,
+            exitCode: code,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        // Ошибка
+        res.status(500).json({
+          success: false,
+          message: 'Ошибка разового парсинга',
+          error: errorOutput || `Процесс завершился с кодом ${code}`
+        });
+      }
+    });
+
+    runOnceProcess.on('error', (error) => {
+      console.error('❌ Ошибка процесса разового парсинга:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Ошибка запуска разового парсинга',
+        error: error.message
       });
-    }, 1000); // Имитируем небольшую задержку
+    });
 
   } catch (error) {
     console.error('❌ Ошибка разового парсинга:', error);
