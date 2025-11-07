@@ -773,6 +773,150 @@ app.get('/api/telegram/chats', async (req, res) => {
 app.post('/api/telegram/check-chats', async (req, res) => {
   try {
     const { chatIds } = req.body;
+      const chunk = data.toString();
+      errorOutput += chunk;
+      console.log('� Python stderr:', chunk.trim());
+    });
+    
+    pythonProcess.on('close', (code) => {
+      console.log('');
+      console.log('🏁 Python процесс завершен');
+      console.log('  📊 Exit code:', code);
+      console.log('  📝 Output length:', output.length);
+      console.log('  ❌ Error length:', errorOutput.length);
+      
+      if (code === 0) {
+        try {
+          console.log('🔍 Парсинг JSON вывода...');
+          console.log('📄 Raw output:', output.substring(0, 500) + (output.length > 500 ? '...' : ''));
+          
+          const chats = JSON.parse(output);
+          console.log(`✅ Получено ${chats.length} чатов из Telegram`);
+          console.log('📋 Первые 3 чата:', chats.slice(0, 3).map(c => ({ id: c.id, title: c.title })));
+          
+          res.json({
+            success: true,
+            data: chats,
+            message: `Загружено ${chats.length} чатов из вашего Telegram аккаунта`,
+            debug: {
+              pythonExitCode: code,
+              outputLength: output.length,
+              errorLength: errorOutput.length
+            }
+          });
+        } catch (parseError) {
+          console.error('❌ Ошибка парсинга JSON:', parseError.message);
+          console.error('📄 Raw output was:', output);
+          
+          res.status(500).json({
+            success: false,
+            error: 'Ошибка обработки данных от Telegram API',
+            details: parseError.message,
+            rawOutput: output,
+            errorOutput: errorOutput
+          });
+        }
+      } else {
+        console.error('❌ Python скрипт завершился с ошибкой');
+        console.error('📄 Error output:', errorOutput);
+        
+        // Специальная обработка ошибки отсутствующих зависимостей
+        if (errorOutput.includes('No module named') || errorOutput.includes('ModuleNotFoundError')) {
+          console.log('🔄 Обнаружена ошибка отсутствующих Python модулей');
+          const missingModule = errorOutput.match(/No module named '([^']+)'/)?.[1] || 'неизвестный модуль';
+          
+          res.json({
+            success: true,
+            data: [{
+              id: '-1003333333333',
+              title: `⚠️ Отсутствует Python модуль: ${missingModule}`,
+              participantsCount: 0,
+              type: 'supergroup',
+              accessible: false
+            }],
+            message: `⚠️ Необходимо установить Python зависимости`,
+            error: 'Missing Python dependencies',
+            missingModule: missingModule,
+            solution: [
+              '1. Добавить requirements.txt в корень проекта',
+              '2. Настроить Python buildpack в Render',
+              '3. Или использовать только Node.js без Python'
+            ]
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            error: 'Ошибка получения чатов из Telegram',
+            details: errorOutput,
+            pythonCode: code,
+            rawOutput: output
+          });
+        }
+      }
+    });
+    
+    pythonProcess.on('error', (error) => {
+      console.error('❌ Ошибка запуска Python процесса:', error.message);
+      console.error('🔍 Возможные причины:');
+      console.error('  - Python не установлен');
+      console.error('  - Неправильный PATH');
+      console.error('  - Отсутствуют зависимости');
+      
+      // ВРЕМЕННЫЙ FALLBACK: демо-данные только при ошибке Python
+      console.log('🔄 Fallback: возвращаем демо-данные из-за ошибки Python');
+      const fallbackChats = [
+        {
+          id: '-1001111111111',
+          title: '⚠️ Python недоступен - демо чат',
+          participantsCount: 100,
+          type: 'supergroup',
+          accessible: true
+        }
+      ];
+      
+      res.json({
+        success: true,
+        data: fallbackChats,
+        message: '⚠️ Python недоступен - показаны демо-данные',
+        error: 'Python environment not available',
+        suggestions: [
+          'Установите Python на сервере',
+          'Добавьте Python buildpack в Render',
+          'Проверьте зависимости: pip install telethon python-dotenv'
+        ]
+      });
+    });
+    
+    // Таймаут для предотвращения зависания
+    setTimeout(() => {
+      console.log('⏰ Достигнут таймаут 30 секунд');
+      pythonProcess.kill();
+      
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: 'Превышено время ожидания ответа от Telegram API (30 секунд)',
+          timeout: true,
+          partialOutput: output,
+          partialError: errorOutput
+        });
+      }
+    }, 30000); // 30 секунд таймаут
+    
+  } catch (error) {
+    console.error('❌ Критическая ошибка в обработчике:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
+// Проверить доступ к конкретным чатам
+app.post('/api/telegram/check-chats', async (req, res) => {
+  try {
+    const { chatIds } = req.body;
     
     if (!chatIds || !Array.isArray(chatIds)) {
       return res.status(400).json({
