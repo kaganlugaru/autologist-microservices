@@ -760,14 +760,14 @@ app.get('/api/telegram/chats', async (req, res) => {
     });
     
   } catch (error) {
-    
-    const pythonProcess = spawn('python3', [pythonScript], {
-      cwd: path.join(__dirname, '..', 'telegram-parser'),
-      env: { ...process.env }
+    console.error('❌ Ошибка в API telegram/chats:', error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Внутренняя ошибка сервера',
+      details: error.message
     });
-    
-    let output = '';
-    let errorOutput = '';
+  }
+});
     
     pythonProcess.stdout.on('data', (data) => {
       const chunk = data.toString();
@@ -1048,28 +1048,13 @@ app.post('/api/parser/start', async (req, res) => {
       });
     }
 
-    // Проверяем наличие файлов сессии
-    const fs = require('fs');
-    const sessionPath = path.join(__dirname, '..', 'telegram-parser', 'railway_production.session');
-    
-    if (!fs.existsSync(sessionPath)) {
-      console.error('❌ Файл сессии не найден:', sessionPath);
-      return res.status(500).json({
-        success: false,
-        message: 'Файл сессии Telegram не найден',
-        sessionPath: sessionPath
-      });
-    }
-    
-    console.log('✅ Файл сессии найден:', sessionPath);
-
     console.log('🚀 Запуск Python парсера...');
     
     // Путь к нашему улучшенному Python парсеру
     const parserPath = path.join(__dirname, '..', 'telegram-parser', 'telegram_parser.py');
     
     // Запускаем Python скрипт с флагом для мониторинга
-    parserProcess = spawn('python3', [parserPath, '--monitor'], {
+    parserProcess = spawn('python', [parserPath, '--monitor'], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -1105,11 +1090,6 @@ app.post('/api/parser/start', async (req, res) => {
 
     parserProcess.on('close', (code) => {
       console.log(`🔚 Parser process closed with code ${code}`);
-      
-      if (code !== 0) {
-        console.error(`❌ Парсер завершился с ошибкой: код ${code}`);
-      }
-      
       parserStatus.running = false;
       parserStatus.pid = null;
       parserProcess = null;
@@ -1117,11 +1097,6 @@ app.post('/api/parser/start', async (req, res) => {
 
     parserProcess.on('error', (error) => {
       console.error(`❌ Parser process error: ${error.message}`);
-      console.error('🔍 Возможные причины:');
-      console.error('  - Python3 не установлен');
-      console.error('  - Отсутствуют зависимости telethon, python-dotenv');
-      console.error('  - Неправильный путь к файлу парсера');
-      
       parserStatus.running = false;
       parserStatus.pid = null;
       parserProcess = null;
@@ -1198,7 +1173,7 @@ app.post('/api/parser/run-once', async (req, res) => {
     const parserPath = path.join(__dirname, '..', 'telegram-parser', 'telegram_parser.py');
     
     // Запускаем Python скрипт без флага --monitor (разовое выполнение)
-    const runOnceProcess = spawn('python3', [parserPath], {
+    const runOnceProcess = spawn('python', [parserPath], {
       cwd: path.join(__dirname, '..', 'telegram-parser'),
       stdio: ['pipe', 'pipe', 'pipe']
     });
