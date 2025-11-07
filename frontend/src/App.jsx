@@ -9,6 +9,10 @@ import './components/KeywordsManagerCompact.css';
 // Получаем URL бэкенда из переменных окружения или используем локальный для разработки
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
+// Настройка axios с увеличенным timeout для Render (может быть медленным на cold start)
+axios.defaults.timeout = 30000; // 30 секунд
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+
 function App() {
   const [activeTab, setActiveTab] = useState('messages');
   const [messages, setMessages] = useState([]);
@@ -18,8 +22,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
-  // Загрузка данных
-  const loadData = async () => {
+  // Загрузка данных с retry механизмом
+  const loadData = async (retryCount = 0) => {
     setLoading(true);
     try {
       const [messagesRes, chatsRes, keywordsRes, statsRes] = await Promise.all([
@@ -41,6 +45,13 @@ function App() {
       setLastUpdateTime(new Date()); // Обновляем время
     } catch (error) {
       console.error('Ошибка загрузки данных:', error);
+      
+      // Retry логика для network errors (максимум 2 попытки)
+      if (retryCount < 2 && (error.code === 'ERR_NETWORK' || error.code === 'NETWORK_ERROR')) {
+        console.log(`Повторная попытка загрузки данных... (${retryCount + 1}/2)`);
+        setTimeout(() => loadData(retryCount + 1), 2000 * (retryCount + 1)); // Увеличивающаяся задержка
+        return;
+      }
     } finally {
       setLoading(false);
     }
