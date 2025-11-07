@@ -59,7 +59,7 @@ export default function Statistics({ stats = {}, messages = [], chats = [], onUp
         category: 'грузоперевозки' // Автоматически устанавливаем категорию
       };
 
-      await axios.post(`${apiBase}/recipients`, recipientData);
+      await axios.post(`${apiBase}/recipient-categories`, recipientData);
       
       setNewRecipient({ name: '', phone: '' });
       setRecipientSuccess('Получатель добавлен успешно');
