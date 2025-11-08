@@ -694,134 +694,25 @@ app.get('/api/telegram/chats', async (req, res) => {
     
     // Запускаем Python скрипт для получения чатов из Railway сессии
     const { spawn } = require('child_process');
-    const path = require('path');
-    
-    const pythonScript = path.join(__dirname, 'get_chats.py');  // Теперь в той же папке
-    
-    console.log('🐍 Конфигурация Python:');
-    console.log('  📁 Script path:', pythonScript);
-    console.log('  📂 Working dir:', __dirname);  // Работаем в папке backend
-    console.log('  🔑 Env vars present:', {
-      TELEGRAM_API_ID: !!process.env.TELEGRAM_API_ID,
-      TELEGRAM_API_HASH: !!process.env.TELEGRAM_API_HASH,
-      NODE_ENV: process.env.NODE_ENV,
-      RENDER: !!process.env.RENDER
-    });
-    
-    // Проверяем наличие переменных окружения
-    if (!process.env.TELEGRAM_API_ID || !process.env.TELEGRAM_API_HASH) {
-      console.error('❌ Отсутствуют переменные окружения Telegram');
-      
-      return res.json({
+  try {
+    console.log('� Запрос чатов через HTTP API парсера (Railway)...');
+    const axios = require('axios');
+    const PARSER_API_URL = process.env.PARSER_API_URL || 'https://autologist-parser-production.up.railway.app/api/chats';
+    const response = await axios.get(PARSER_API_URL);
+    if (response.data && response.data.success) {
+      res.json({
         success: true,
-        data: [{
-          id: '-1004444444444',
-          title: '⚠️ Не настроены переменные окружения Telegram',
-          participantsCount: 0,
-          type: 'supergroup',
-          accessible: false
-        }],
-        message: '⚠️ Необходимо настроить переменные окружения',
-        error: 'Missing environment variables',
-        missingVars: {
-          TELEGRAM_API_ID: !process.env.TELEGRAM_API_ID,
-          TELEGRAM_API_HASH: !process.env.TELEGRAM_API_HASH
-        },
-        solution: [
-          '1. Добавить TELEGRAM_API_ID в Render Environment',
-          '2. Добавить TELEGRAM_API_HASH в Render Environment',
-          '3. Перезапустить сервис'
-        ]
+        data: response.data.chats || response.data.data || [],
+        message: 'Чаты успешно получены с парсера',
+        source: 'parser-api'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: response.data.error || 'Ошибка получения чатов с парсера',
+        source: 'parser-api'
       });
     }
-    
-    // ЗАПУСКАЕМ РЕАЛЬНЫЙ PYTHON СКРИПТ С api_chats.session
-    console.log('✅ Переменные окружения настроены');
-    console.log('� Запускаем Python скрипт для получения чатов...');
-    
-    const pythonProcess = spawn('python', ['get_chats.py'], {
-      cwd: __dirname,  // Работаем в папке backend
-      env: {
-        ...process.env,
-        TELEGRAM_API_ID: process.env.TELEGRAM_API_ID,
-        TELEGRAM_API_HASH: process.env.TELEGRAM_API_HASH,
-        PYTHONPATH: __dirname,  // Python path указывает на backend
-        PYTHONUNBUFFERED: '1',
-        PYTHONIOENCODING: 'utf-8',  // Исправляем кодировку для Windows
-        PYTHONLEGACYWINDOWSSTDIO: '1'  // Совместимость с Windows консолью
-      }
-    });
-
-    let pythonOutput = '';
-    let pythonError = '';
-
-    pythonProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      pythonOutput += output;
-      console.log('🐍 Python stdout:', output.trim());
-    });
-
-    pythonProcess.stderr.on('data', (data) => {
-      const error = data.toString();
-      pythonError += error;
-      console.error('🐍 Python stderr:', error.trim());
-    });
-
-    pythonProcess.on('close', (code) => {
-      console.log(`🐍 Python процесс завершен с кодом: ${code}`);
-      
-      if (code === 0) {
-        try {
-          // Ищем JSON в выводе Python
-          const jsonStart = pythonOutput.indexOf('[');
-          const jsonEnd = pythonOutput.lastIndexOf(']') + 1;
-          
-          if (jsonStart >= 0 && jsonEnd > jsonStart) {
-            const jsonStr = pythonOutput.substring(jsonStart, jsonEnd);
-            const chatsData = JSON.parse(jsonStr);
-            
-            console.log(`✅ Успешно получено ${chatsData.length} чатов из Python`);
-            
-            return res.json({
-              success: true,
-              data: chatsData,
-              message: `✅ Получено ${chatsData.length} чатов из Telegram API`,
-              source: 'telegram_api',
-              pythonOutput: pythonOutput.split('\n').slice(-10) // последние 10 строк для дебага
-            });
-          } else {
-            throw new Error('JSON данные не найдены в выводе Python');
-          }
-        } catch (parseError) {
-          console.error('❌ Ошибка парсинга JSON:', parseError.message);
-          return res.status(500).json({
-            success: false,
-            error: 'Ошибка парсинга ответа Python',
-            details: parseError.message,
-            pythonOutput: pythonOutput,
-            pythonError: pythonError
-          });
-        }
-      } else {
-        console.error('❌ Python скрипт завершился с ошибкой');
-        return res.status(500).json({
-          success: false,
-          error: `Python скрипт завершился с кодом ${code}`,
-          pythonOutput: pythonOutput,
-          pythonError: pythonError
-        });
-      }
-    });
-
-    pythonProcess.on('error', (error) => {
-      console.error('❌ Ошибка запуска Python:', error.message);
-      return res.status(500).json({
-        success: false,
-        error: 'Ошибка запуска Python скрипта',
-        details: error.message
-      });
-    });
-    
   } catch (error) {
     console.error('❌ Ошибка в API telegram/chats:', error.message);
     res.status(500).json({
