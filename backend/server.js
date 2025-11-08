@@ -694,7 +694,7 @@ app.get('/api/telegram/chats', async (req, res) => {
     const axios = require('axios');
   // Указываем рабочий адрес FastAPI парсера на Railway
   const PARSER_API_URL = 'https://autologist-parser-production.up.railway.app/api/update-chats';
-    const response = await axios.get(PARSER_API_URL);
+  const response = await axios.post(PARSER_API_URL);
     if (response.data && response.data.success) {
       res.json({
         success: true,
