@@ -16,7 +16,11 @@ const PORT = process.env.PORT || 3001;
 let db;
 
 // Middleware
-app.use(cors());
+// Настройка CORS: разрешаем только фронт Vercel
+app.use(cors({
+  origin: 'https://autologist-microservices.vercel.app',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('public'));
 
