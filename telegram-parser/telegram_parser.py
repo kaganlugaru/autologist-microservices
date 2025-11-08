@@ -172,10 +172,9 @@ class TelegramParser:
                             'chat_name': dialog.name or str(dialog.id),
                             'active': True
                         })
-                # Сохраняем в Supabase
-                self.supabase.table('monitored_chats').upsert(chats).execute()
-                self.monitored_chats = chats
-                logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в Supabase")
+                # Сохраняем все чаты в отдельную таблицу all_chats
+                self.supabase.table('all_chats').upsert(chats).execute()
+                logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
             except Exception as e:
                 logger.error(f"ОШИБКА discover_chats: {e}")
 
