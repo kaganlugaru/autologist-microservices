@@ -692,20 +692,30 @@ app.get('/api/telegram/chats', async (req, res) => {
   try {
     console.log('� Запрос чатов через HTTP API парсера (Railway)...');
     const axios = require('axios');
-  // Указываем рабочий адрес FastAPI парсера на Railway
-  const PARSER_API_URL = 'https://autologist-parser-production.up.railway.app/api/update-chats';
-  const response = await axios.post(PARSER_API_URL);
-    if (response.data && response.data.success) {
+    const PARSER_API_URL = 'https://autologist-parser-production.up.railway.app/api/update-chats';
+    const PARSER_GET_CHATS_URL = 'https://autologist-parser-production.up.railway.app/api/chats';
+    // 1. Обновляем чаты
+    const updateResponse = await axios.post(PARSER_API_URL);
+    if (!updateResponse.data || !updateResponse.data.success) {
+      return res.status(500).json({
+        success: false,
+        error: updateResponse.data.error || 'Ошибка обновления чатов в парсере',
+        source: 'parser-api'
+      });
+    }
+    // 2. Получаем чаты из парсера
+    const getResponse = await axios.get(PARSER_GET_CHATS_URL);
+    if (getResponse.data && getResponse.data.success) {
       res.json({
         success: true,
-        data: response.data.chats || response.data.data || [],
-        message: 'Чаты успешно получены с парсера',
+        data: getResponse.data.chats || [],
+        message: 'Чаты успешно получены из all_chats',
         source: 'parser-api'
       });
     } else {
       res.status(500).json({
         success: false,
-        error: response.data.error || 'Ошибка получения чатов с парсера',
+        error: getResponse.data.error || 'Ошибка получения чатов из all_chats',
         source: 'parser-api'
       });
     }
