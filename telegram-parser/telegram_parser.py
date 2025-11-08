@@ -1,3 +1,40 @@
+import threading
+import uvicorn
+from fastapi import FastAPI
+from supabase import create_client
+import os
+# ...existing code...
+def run_fastapi():
+    app = FastAPI()
+
+    @app.get('/api/chats')
+    async def get_all_chats():
+        try:
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+            supabase = create_client(supabase_url, supabase_key)
+            response = supabase.table('all_chats').select('*').execute()
+            chats = response.data if hasattr(response, 'data') else response
+            return {"success": True, "chats": chats}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @app.post('/api/update-chats')
+    async def update_chats():
+        try:
+            # Здесь можно вызвать discover_chats или другую функцию парсера
+            # Например, parser.discover_chats()
+            return {"success": True, "message": "Чаты обновлены."}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    # Запуск FastAPI сервера в отдельном потоке
+    api_thread = threading.Thread(target=run_fastapi, daemon=True)
+    api_thread.start()
+    # ...здесь основной код парсера...
 """
 Telegram парсер для сбора сообщений из групповых чатов
 Адаптированная версия для Supabase с улучшениями из рабочего парсера
