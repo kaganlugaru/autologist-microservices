@@ -672,6 +672,20 @@ class TelegramParser:
             self.stats['errors'] += 1
             logger.error(f"ОШИБКА: Обработка сообщения: {e}")
 
+    async def flag_watcher(self):
+        FLAG_PATH = '../request_chats.flag'
+        while True:
+            if os.path.exists(FLAG_PATH):
+                logger.info('ФЛАГ: Получен запрос на список чатов, останавливаю мониторинг...')
+                await self.client.disconnect()
+                await self.discover_chats()  # функция получения чатов
+                os.remove(FLAG_PATH)
+                logger.info('ФЛАГ: Список чатов обновлён, мониторинг возобновлён.')
+                await self.client.start()
+                self.setup_message_handlers()
+                await self.client.run_until_disconnected()
+            await asyncio.sleep(10)
+
     async def start_monitoring(self):
         """Запуск мониторинга сообщений"""
         try:

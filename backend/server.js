@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // Импорт общего модуля для работы с БД
@@ -1359,6 +1360,18 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   console.log('\n🛑 Получен сигнал SIGTERM. Завершение работы...');
   process.exit(0);
+});
+
+// ===== ЗАПРОС СПИСКА ЧАТОВ ЧЕРЕЗ ПАРСЕР =====
+const FLAG_PATH = path.join(__dirname, '../request_chats.flag');
+
+app.post('/api/request-chats', (req, res) => {
+  try {
+    fs.writeFileSync(FLAG_PATH, 'request');
+    res.json({ status: 'ok', message: 'Файл-флаг создан, парсер получит команду.' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'Не удалось создать файл-флаг.' });
+  }
 });
 
 // Запуск
