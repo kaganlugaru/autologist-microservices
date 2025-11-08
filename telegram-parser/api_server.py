@@ -1,3 +1,17 @@
+from supabase import create_client
+import os
+# ...existing code...
+@app.get('/api/chats')
+async def get_all_chats():
+    try:
+        supabase_url = os.getenv('SUPABASE_URL')
+        supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+        supabase = create_client(supabase_url, supabase_key)
+        response = supabase.table('all_chats').select('*').execute()
+        chats = response.data if hasattr(response, 'data') else response
+        return {"success": True, "chats": chats}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 from fastapi import FastAPI
 import asyncio
 import uvicorn
