@@ -1,77 +1,22 @@
-import threading
-import uvicorn
-from fastapi import FastAPI
+import logging
+# Настройка логгера
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/telegram_parser.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+"""
+Telegram парсер для сбора сообщений из групповых чатов
+Адаптированная версия для Supabase с улучшениями из рабочего парсера
+Использует Telethon для подключения к Telegram API
+"""
 from supabase import create_client
 import os
-
-def run_fastapi():
-    print("Запуск FastAPI сервера...")
-    app = FastAPI()
-
-    @app.get('/api/chats')
-    async def get_all_chats():
-        try:
-            supabase_url = os.getenv('SUPABASE_URL')
-            supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-            supabase = create_client(supabase_url, supabase_key)
-            response = supabase.table('all_chats').select('*').execute()
-            chats = response.data if hasattr(response, 'data') else response
-            return {"success": True, "chats": chats}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    @app.post('/api/update-chats')
-    async def update_chats():
-        try:
-            # Здесь можно вызвать discover_chats или другую функцию парсера
-            return {"success": True, "message": "Чаты обновлены."}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
-# Запуск FastAPI сервера в отдельном потоке сразу при импорте файла
-api_thread = threading.Thread(target=run_fastapi, daemon=True)
-api_thread.start()
-import threading
-import uvicorn
-from fastapi import FastAPI
-from supabase import create_client
-import os
-# ...existing code...
-def run_fastapi():
-    app = FastAPI()
-
-    @app.get('/api/chats')
-    async def get_all_chats():
-        try:
-            supabase_url = os.getenv('SUPABASE_URL')
-            supabase_key = os.getenv('SUPABASE_SERVICE_ROLE_KEY')
-            supabase = create_client(supabase_url, supabase_key)
-            response = supabase.table('all_chats').select('*').execute()
-            chats = response.data if hasattr(response, 'data') else response
-            return {"success": True, "chats": chats}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    @app.post('/api/update-chats')
-    async def update_chats():
-        try:
-            # Здесь можно вызвать discover_chats или другую функцию парсера
-            # Например, parser.discover_chats()
-            return {"success": True, "message": "Чаты обновлены."}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
-
-if __name__ == "__main__":
-    # Запуск FastAPI сервера в отдельном потоке
-    api_thread = threading.Thread(target=run_fastapi, daemon=True)
-    api_thread.start()
-    # ...здесь основной код парсера...
+# ...здесь основной код парсера...
 """
 Telegram парсер для сбора сообщений из групповых чатов
 Адаптированная версия для Supabase с улучшениями из рабочего парсера
@@ -246,9 +191,17 @@ class TelegramParser:
                             'chat_name': dialog.name or str(dialog.id),
                             'active': True
                         })
-                # Сохраняем все чаты в отдельную таблицу all_chats
-                self.supabase.table('all_chats').upsert(chats).execute()
-                logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
+                logger.info(f"Найдено {len(chats)} чатов для записи в базу")
+                try:
+                    response = self.supabase.table('all_chats').upsert(chats).execute()
+                    logger.info(f"Ответ Supabase: {response}")
+                    # Проверка на типичный признак ошибки
+                    if hasattr(response, 'status_code') and response.status_code != 200:
+                        logger.error(f"Ошибка записи в Supabase: {response}")
+                    else:
+                        logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
+                except Exception as db_exc:
+                    logger.error(f"ОШИБКА при записи в Supabase: {db_exc}")
             except Exception as e:
                 logger.error(f"ОШИБКА discover_chats: {e}")
 
@@ -511,56 +464,50 @@ class TelegramParser:
             return response.data
         except Exception as e:
             logger.error(f"ОШИБКА: Сохранение сообщения: {e}")
-            return None
-
-    async def check_duplicate(self, content_hash, user_id):
-        """Проверка дубликата в БД (только за последние 24 часа)"""
-        try:
-            # Проверяем дубликаты только за последние 24 часа
-            yesterday = datetime.now() - timedelta(days=1)
-            
-            response = self.supabase.table('messages').select('id, message_text, created_at').eq('content_hash', content_hash).eq('user_id', user_id).eq('is_duplicate', False).gte('created_at', yesterday.isoformat()).execute()
-            return response.data[0] if response.data else None
-        except Exception as e:
-            logger.error(f"ОШИБКА: Проверка дубликата: {e}")
-            return None
-
-    def get_duplicate_reason(self, message_data, existing):
-        """Определение причины дублирования"""
-        if not existing:
-            return None
-            
-        # Проверяем возраст сообщения
-        existing_date = datetime.fromisoformat(existing['created_at'].replace('Z', '+00:00'))
-        age_hours = (datetime.now(existing_date.tzinfo) - existing_date).total_seconds() / 3600
-        
-        if age_hours > 24:
-            return "АКТУАЛИЗАЦИЯ: Сообщение старше 24 часов - считается актуализацией"
-        else:
-            text_similarity = SequenceMatcher(None, message_data['message_text'], existing['message_text']).ratio()
-            return f"ДУБЛИКАТ: Совпадение {text_similarity:.1%} за последние {age_hours:.1f}ч"
-
-    def create_content_hash(self, text):
-        """Создание хеша контента без цифр для дедупликации"""
-        # Убираем цифры, знаки препинания и лишние пробелы
-        clean_text = re.sub(r'[\d\s\W]+', ' ', text.lower())
-        clean_text = ' '.join(clean_text.split())
-        return hashlib.md5(clean_text.encode()).hexdigest()
-
-    def create_message_hash(self, message_text, user_id):
-        """Создание хеша для дедупликации"""
-        content = f"{message_text.lower().strip()}_{user_id}"
+            """
         return hashlib.md5(content.encode()).hexdigest()
 
     def check_keywords(self, text):
         """
-        Проверка наличия ключевых слов в тексте с поддержкой сложных условий
-        
-        Поддерживаемые операторы:
-        - Простое слово: "тандем" - ищет слово "тандем" в тексте
-        - Логическое И: "тандем;140" - ищет оба слова "тандем" И "140" в тексте
-        - Можно комбинировать: "груз;дальнобой;срочно" - все три слова должны быть в тексте
-        """
+            import os
+            import asyncio
+            import hashlib
+            import re
+            import json
+            from datetime import datetime, timedelta
+            from telethon import TelegramClient, events
+            from telethon.errors import SessionPasswordNeededError, FloodWaitError
+            from dotenv import load_dotenv
+            import logging
+            from difflib import SequenceMatcher
+            import sys
+            try:
+                from supabase import create_client, Client
+            except ImportError:
+                print("ОШИБКА: Нужно установить: pip install supabase")
+                sys.exit(1)
+            try:
+                from session_helper import setup_session_from_env
+            except ImportError:
+                print("⚠️ session_helper не найден, будет использована локальная сессия")
+                setup_session_from_env = None
+            load_dotenv()
+            os.makedirs('logs', exist_ok=True)
+            logging.basicConfig(
+                level=logging.INFO,
+                format='%(asctime)s - %(levelname)s - %(message)s',
+                handlers=[
+                    logging.FileHandler('logs/telegram_parser.log', encoding='utf-8'),
+                    logging.StreamHandler()
+                ]
+            )
+            logger = logging.getLogger(__name__)
+    # Проверка наличия ключевых слов в тексте с поддержкой сложных условий
+    # Поддерживаемые операторы:
+    # - Простое слово: "тандем" - ищет слово "тандем" в тексте
+    # - Логическое И: "тандем;140" - ищет оба слова "тандем" И "140" в тексте
+    # - Можно комбинировать: "груз;дальнобой;срочно" - все три слова должны быть в тексте
+    def check_keywords(self, text):
         found_keywords = []
         text_lower = text.lower()
         
