@@ -690,11 +690,6 @@ app.get('/api/telegram/chats', async (req, res) => {
   console.log('📍 IP:', req.ip || req.connection.remoteAddress);
   
   try {
-    console.log('🔍 Запрос реальных чатов из Telegram аккаунта...');
-    
-    // Запускаем Python скрипт для получения чатов из Railway сессии
-    const { spawn } = require('child_process');
-  try {
     console.log('� Запрос чатов через HTTP API парсера (Railway)...');
     const axios = require('axios');
     const PARSER_API_URL = process.env.PARSER_API_URL || 'https://autologist-parser-production.up.railway.app/api/chats';
