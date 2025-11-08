@@ -159,6 +159,46 @@ class TelegramParser:
         except KeyboardInterrupt:
             logger.error(f"ОШИБКА: Инициализация прервана пользователем")
             raise
+        async def discover_chats(self):
+            """Получение списка чатов пользователя через Telethon"""
+            try:
+                await self.client.start()
+                dialogs = await self.client.get_dialogs()
+                chats = []
+                for dialog in dialogs:
+                    if dialog.is_group or dialog.is_channel:
+                        chats.append({
+                            'chat_id': dialog.id,
+                            'chat_name': dialog.name or str(dialog.id),
+                            'active': True
+                        })
+                # Сохраняем в Supabase
+                self.supabase.table('monitored_chats').upsert(chats).execute()
+                self.monitored_chats = chats
+                logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в Supabase")
+            except Exception as e:
+                logger.error(f"ОШИБКА discover_chats: {e}")
+
+        def setup_message_handlers(self):
+            """Настройка обработчиков сообщений для Telethon"""
+            @self.client.on(events.NewMessage)
+            async def handle_new_message(event):
+                chat_id = str(event.chat_id)
+                monitored_chat_ids = [str(chat['chat_id']) for chat in self.monitored_chats]
+                if chat_id not in monitored_chat_ids:
+                    return
+                # ... здесь обработка сообщения ...
+                logger.info(f"НОВОЕ СООБЩЕНИЕ: {event.message.text}")
+
+        async def periodic_monitored_chats_update(self, interval=60):
+            """Периодически обновляет список чатов из Supabase"""
+            while True:
+                try:
+                    await self.load_monitored_chats()
+                    logger.info(f"ПЕРИОДИЧЕСКОЕ ОБНОВЛЕНИЕ: Загружено {len(self.monitored_chats)} чатов")
+                except Exception as e:
+                    logger.error(f"ОШИБКА periodic_monitored_chats_update: {e}")
+                await asyncio.sleep(interval)
     
     async def create_session_from_env(self):
         """Создает сессию из переменных окружения для Railway"""
