@@ -28,7 +28,8 @@ def run_fastapi():
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
     # Запуск FastAPI сервера в отдельном потоке
