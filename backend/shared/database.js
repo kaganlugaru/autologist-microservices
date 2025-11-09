@@ -3,6 +3,46 @@
 const { createClient } = require('@supabase/supabase-js');
 
 class DatabaseManager {
+  /**
+   * Получить все доступные чаты, которые ещё не мониторятся
+   */
+  async getAvailableChats(platform = null) {
+    try {
+      // Получаем все чаты
+      let query = this.supabase
+        .from('all_chats')
+        .select('chat_id, chat_name, members_count, platform');
+      if (platform) {
+        query = query.eq('platform', platform);
+      }
+      const { data: allChats, error: allError } = await query;
+      if (allError) throw allError;
+
+      // Получаем все мониторящиеся чаты
+      let monitoredQuery = this.supabase
+        .from('monitored_chats')
+        .select('chat_id');
+      if (platform) {
+        monitoredQuery = monitoredQuery.eq('platform', platform);
+      }
+      const { data: monitoredChats, error: monitoredError } = await monitoredQuery;
+      if (monitoredError) throw monitoredError;
+
+      const monitoredIds = new Set(monitoredChats.map(c => c.chat_id));
+      // Оставляем только те, которые ещё не мониторятся
+      const availableChats = allChats.filter(chat => !monitoredIds.has(chat.chat_id));
+      // Преобразуем для фронта: id, title, members_count, platform
+      return availableChats.map(chat => ({
+        id: chat.chat_id,
+        title: chat.chat_name,
+        members_count: chat.members_count,
+        platform: chat.platform
+      }));
+    } catch (error) {
+      console.error('Ошибка получения доступных чатов:', error);
+      throw error;
+    }
+  }
   constructor() {
     // Инициализация подключения к Supabase
     this.supabaseUrl = process.env.SUPABASE_URL;
