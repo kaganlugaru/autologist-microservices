@@ -16,7 +16,7 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
   // Загрузить отслеживаемые чаты
   const loadMonitoredChats = async () => {
     try {
-      const response = await axios.get(`${apiBase}/monitored-chats`);
+      const response = await axios.get(`${apiBase}/chats`);
       const data = response.data?.data || [];
       const telegramChats = data.filter(chat => chat.platform === 'telegram');
       setMonitoredChats(telegramChats);
@@ -90,8 +90,7 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
         platform: 'telegram',
         active: true
       });
-      // После добавления обновляем оба списка
-      await loadMonitoredChats();
+      // После добавления обновляем только доступные чаты
       await loadAvailableChats();
       onUpdate?.();
     } catch (error) {
