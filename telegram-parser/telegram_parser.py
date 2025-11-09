@@ -185,37 +185,37 @@ class TelegramParser:
         except KeyboardInterrupt:
             logger.error(f"ОШИБКА: Инициализация прервана пользователем")
             raise
-        async def discover_chats(self):
-            """Получение списка чатов пользователя через Telethon"""
+    async def discover_chats(self):
+        """Получение списка чатов пользователя через Telethon"""
+        try:
+            await self.client.start()
+            dialogs = await self.client.get_dialogs()
+            chats = []
+            from datetime import datetime
+            for dialog in dialogs:
+                if dialog.is_group or dialog.is_channel:
+                    chat_data = {
+                        'chat_id': str(dialog.id),
+                        'chat_name': dialog.name or str(dialog.id),
+                        'active': True,
+                        'created_at': datetime.now().isoformat()
+                    }
+                    chats.append(chat_data)
+            logger.info(f"Найдено {len(chats)} чатов для записи в базу. Данные: {chats}")
             try:
-                await self.client.start()
-                dialogs = await self.client.get_dialogs()
-                chats = []
-                from datetime import datetime
-                for dialog in dialogs:
-                    if dialog.is_group or dialog.is_channel:
-                        chat_data = {
-                            'chat_id': str(dialog.id),
-                            'chat_name': dialog.name or str(dialog.id),
-                            'active': True,
-                            'created_at': datetime.now().isoformat()
-                        }
-                        chats.append(chat_data)
-                logger.info(f"Найдено {len(chats)} чатов для записи в базу. Данные: {chats}")
-                try:
-                    response = self.supabase.table('all_chats').upsert(chats).execute()
-                    logger.info(f"Ответ Supabase: {response}")
-                    # Проверка на типичный признак ошибки
-                    if hasattr(response, 'status_code') and response.status_code != 200:
-                        logger.error(f"Ошибка записи в Supabase: {response}")
-                    elif hasattr(response, 'error') and response.error:
-                        logger.error(f"Ошибка Supabase: {response.error}")
-                    else:
-                        logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
-                except Exception as db_exc:
-                    logger.error(f"ОШИБКА при записи в Supabase: {db_exc}. Данные: {chats}")
-            except Exception as e:
-                logger.error(f"ОШИБКА discover_chats: {e}")
+                response = self.supabase.table('all_chats').upsert(chats).execute()
+                logger.info(f"Ответ Supabase: {response}")
+                # Проверка на типичный признак ошибки
+                if hasattr(response, 'status_code') and response.status_code != 200:
+                    logger.error(f"Ошибка записи в Supabase: {response}")
+                elif hasattr(response, 'error') and response.error:
+                    logger.error(f"Ошибка Supabase: {response.error}")
+                else:
+                    logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
+            except Exception as db_exc:
+                logger.error(f"ОШИБКА при записи в Supabase: {db_exc}. Данные: {chats}")
+        except Exception as e:
+            logger.error(f"ОШИБКА discover_chats: {e}")
 
         def setup_message_handlers(self):
             """Настройка обработчиков сообщений для Telethon"""
