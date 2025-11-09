@@ -33,14 +33,14 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
     console.log('🔥 ================================');
     console.log('📅 Время:', new Date().toISOString());
     console.log('🔗 API Base:', apiBase);
-    console.log('📍 Endpoint:', `${apiBase}/telegram/chats`);
+      console.log('📍 Endpoint:', `${apiBase}/chats`);
     
     try {
       setLoadingChats(true);
       console.log('⏳ Устанавливаем loadingChats = true');
       
       console.log('🌐 Отправляем HTTP запрос...');
-      const response = await axios.get(`${apiBase}/telegram/chats`);
+        const response = await axios.get(`${apiBase}/chats`);
       
       console.log('✅ Ответ получен:');
       console.log('  📊 Status:', response.status);
