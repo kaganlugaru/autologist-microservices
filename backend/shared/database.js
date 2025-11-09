@@ -15,18 +15,8 @@ class DatabaseManager {
       const { data: allChats, error: allError } = await query;
       if (allError) throw allError;
 
-      // Получаем все мониторящиеся чаты
-      let monitoredQuery = this.supabase
-        .from('monitored_chats')
-        .select('chat_id');
-      const { data: monitoredChats, error: monitoredError } = await monitoredQuery;
-      if (monitoredError) throw monitoredError;
-
-  const monitoredIds = new Set(monitoredChats.map(c => String(c.chat_id)));
-  // Оставляем только те, которые ещё не мониторятся
-  const availableChats = allChats.filter(chat => !monitoredIds.has(String(chat.chat_id)));
-      // Возвращаем тот же формат, что и monitored_chats
-      return availableChats.map(chat => ({
+      // Возвращаем все чаты из all_chats
+      return allChats.map(chat => ({
         chat_id: chat.chat_id,
         chat_name: chat.chat_name ? chat.chat_name : `Chat ${chat.chat_id}`
       }));
