@@ -54,10 +54,9 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
       if (response.data?.data) {
         console.log('📋 Первые 3 чата:');
         response.data.data.slice(0, 3).forEach((chat, index) => {
-          console.log(`  ${index + 1}. ${chat.title} (ID: ${chat.id})`);
+          console.log(`  ${index + 1}. ${chat.chat_name || `Chat ${chat.chat_id}`} (ID: ${chat.chat_id})`);
         });
       }
-      
       const data = response.data?.data || [];
       console.log(`🎯 Устанавливаем ${data.length} чатов в state`);
       setAvailableChats(data);
@@ -218,8 +217,7 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
                   <div key={chat.chat_id} className="available-chat-item">
                     <div className="chat-info">
                       <div className="chat-details">
-                        <strong className="chat-name">{chat.chat_name}</strong>
-                        <small className="chat-participants">👥 {chat.participantsCount || chat.members_count || 0} участников</small>
+                        <strong className="chat-name">{chat.chat_name || `Chat ${chat.chat_id}`}</strong>
                       </div>
                     </div>
                     <div className="chat-controls">
