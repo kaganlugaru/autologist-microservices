@@ -22,9 +22,9 @@ class DatabaseManager {
       const { data: monitoredChats, error: monitoredError } = await monitoredQuery;
       if (monitoredError) throw monitoredError;
 
-      const monitoredIds = new Set(monitoredChats.map(c => c.chat_id));
-      // Оставляем только те, которые ещё не мониторятся
-      const availableChats = allChats.filter(chat => !monitoredIds.has(chat.chat_id));
+  const monitoredIds = new Set(monitoredChats.map(c => String(c.chat_id)));
+  // Оставляем только те, которые ещё не мониторятся
+  const availableChats = allChats.filter(chat => !monitoredIds.has(String(chat.chat_id)));
       // Возвращаем тот же формат, что и monitored_chats
       return availableChats.map(chat => ({
         chat_id: chat.chat_id,
