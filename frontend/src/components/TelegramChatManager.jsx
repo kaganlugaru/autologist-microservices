@@ -211,27 +211,25 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
                 <p>Нажмите кнопку выше, чтобы загрузить чаты из вашего Telegram аккаунта</p>
               </div>
             ) : (
-              availableChats
-                .filter(chat => !monitoredChats.some(mc => mc.chat_id === chat.chat_id))
-                .map(chat => (
-                  <div key={chat.chat_id} className="available-chat-item">
-                    <div className="chat-info">
-                      <div className="chat-details">
-                        <strong className="chat-name">{chat.chat_name || `Chat ${chat.chat_id}`}</strong>
-                      </div>
-                    </div>
-                    <div className="chat-controls">
-                      <button
-                        onClick={() => addChatToMonitoring(chat)}
-                        disabled={loading}
-                        className="control-btn monitor"
-                        title="Добавить в мониторинг"
-                      >
-                        {loading ? '⏳' : '➕ Мониторить'}
-                      </button>
+              availableChats.map(chat => (
+                <div key={chat.chat_id} className="available-chat-item">
+                  <div className="chat-info">
+                    <div className="chat-details">
+                      <strong className="chat-name">{chat.chat_name || `Chat ${chat.chat_id}`}</strong>
                     </div>
                   </div>
-                ))
+                  <div className="chat-controls">
+                    <button
+                      onClick={() => addChatToMonitoring(chat)}
+                      disabled={loading}
+                      className="control-btn monitor"
+                      title="Добавить в мониторинг"
+                    >
+                      {loading ? '⏳' : '➕ Мониторить'}
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
