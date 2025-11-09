@@ -70,6 +70,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class TelegramParser:
+    def create_message_hash(self, text, sender_id):
+        """Создаёт уникальный хеш для сообщения по тексту и id пользователя"""
+        import hashlib
+        hash_input = f"{text}:{sender_id}"
+        return hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
     def __init__(self):
         """Инициализация парсера"""
         logger.info("ЗАПУСК: Инициализация Telegram парсера...")
@@ -186,12 +191,14 @@ class TelegramParser:
                 await self.client.start()
                 dialogs = await self.client.get_dialogs()
                 chats = []
+                from datetime import datetime
                 for dialog in dialogs:
                     if dialog.is_group or dialog.is_channel:
                         chat_data = {
                             'chat_id': str(dialog.id),
                             'chat_name': dialog.name or str(dialog.id),
-                            'active': True
+                            'active': True,
+                            'created_at': datetime.now().isoformat()
                         }
                         chats.append(chat_data)
                 logger.info(f"Найдено {len(chats)} чатов для записи в базу. Данные: {chats}")
@@ -763,6 +770,10 @@ class TelegramParser:
                 logger.error("2. Введите код из SMS")
                 logger.error("3. Загрузите файл сессии на Railway")
                 raise FileNotFoundError(f"Сессия Telegram не найдена: {session_file}")
+
+            # ВЫГРУЗКА ВСЕХ ЧАТОВ ПЕРЕД СТАРТОМ МОНИТОРИНГА
+            logger.info("Выгружаю все чаты в all_chats перед запуском мониторинга...")
+            await self.discover_chats()
             
             # Автоматический запуск без запроса кода (используется сохраненная сессия)
             await self.client.start()
