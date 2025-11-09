@@ -11,7 +11,8 @@ class DatabaseManager {
       // Получаем все чаты
       let query = this.supabase
         .from('all_chats')
-        .select('chat_id, chat_name');
+        .select('chat_id, chat_name')
+        .limit(1000);
       const { data: allChats, error: allError } = await query;
       if (allError) throw allError;
 
