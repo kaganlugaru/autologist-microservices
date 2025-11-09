@@ -677,57 +677,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ===== TELEGRAM ЧАТЫ =====
-
-// Получить доступные чаты из Telegram
-app.get('/api/telegram/chats', async (req, res) => {
-  console.log('');
-  console.log('🔥 ================================');
-  console.log('🔥 ЗАПРОС TELEGRAM CHATS ПОЛУЧЕН');
-  console.log('🔥 ================================');
-  console.log('📅 Время:', new Date().toISOString());
-  console.log('🌐 User-Agent:', req.headers['user-agent']);
-  console.log('🔗 Origin:', req.headers.origin);
-  console.log('📍 IP:', req.ip || req.connection.remoteAddress);
-  
-  try {
-    console.log('� Запрос чатов через HTTP API парсера (Railway)...');
-    const axios = require('axios');
-    const PARSER_API_URL = 'https://autologist-parser-production.up.railway.app/api/update-chats';
-    const PARSER_GET_CHATS_URL = 'https://autologist-parser-production.up.railway.app/api/chats';
-    // 1. Обновляем чаты
-    const updateResponse = await axios.post(PARSER_API_URL);
-    if (!updateResponse.data || !updateResponse.data.success) {
-      return res.status(500).json({
-        success: false,
-        error: updateResponse.data.error || 'Ошибка обновления чатов в парсере',
-        source: 'parser-api'
-      });
-    }
-    // 2. Получаем чаты из парсера
-    const getResponse = await axios.get(PARSER_GET_CHATS_URL);
-    if (getResponse.data && getResponse.data.success) {
-      res.json({
-        success: true,
-        data: getResponse.data.chats || [],
-        message: 'Чаты успешно получены из all_chats',
-        source: 'parser-api'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: getResponse.data.error || 'Ошибка получения чатов из all_chats',
-        source: 'parser-api'
-      });
-    }
-  } catch (error) {
-    console.error('❌ Ошибка в API telegram/chats:', error.message);
-    res.status(500).json({
-      success: false,
-      error: 'Внутренняя ошибка сервера',
-      details: error.message
-    });
-  }
-});
+// Удалён устаревший endpoint /api/telegram/chats, теперь используйте /api/chats для получения чатов напрямую из базы Supabase
 
 // Проверить доступ к конкретным чатам
 app.post('/api/telegram/check-chats', async (req, res) => {
