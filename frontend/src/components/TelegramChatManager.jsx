@@ -213,13 +213,13 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
               </div>
             ) : (
               availableChats
-                .filter(chat => !monitoredChats.some(mc => mc.chat_id === chat.id))
+                .filter(chat => !monitoredChats.some(mc => mc.chat_id === chat.chat_id))
                 .map(chat => (
-                  <div key={chat.id} className="available-chat-item">
+                  <div key={chat.chat_id} className="available-chat-item">
                     <div className="chat-info">
                       <div className="chat-details">
-                        <strong className="chat-name">{chat.title}</strong>
-                        <small className="chat-participants">👥 {chat.participantsCount || chat.participants_count || 0} участников</small>
+                        <strong className="chat-name">{chat.chat_name}</strong>
+                        <small className="chat-participants">👥 {chat.participantsCount || chat.members_count || 0} участников</small>
                       </div>
                     </div>
                     <div className="chat-controls">
