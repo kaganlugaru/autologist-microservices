@@ -11,10 +11,7 @@ class DatabaseManager {
       // Получаем все чаты
       let query = this.supabase
         .from('all_chats')
-        .select('chat_id, chat_name, members_count, platform');
-      if (platform) {
-        query = query.eq('platform', platform);
-      }
+        .select('chat_id, chat_name');
       const { data: allChats, error: allError } = await query;
       if (allError) throw allError;
 
@@ -22,21 +19,16 @@ class DatabaseManager {
       let monitoredQuery = this.supabase
         .from('monitored_chats')
         .select('chat_id');
-      if (platform) {
-        monitoredQuery = monitoredQuery.eq('platform', platform);
-      }
       const { data: monitoredChats, error: monitoredError } = await monitoredQuery;
       if (monitoredError) throw monitoredError;
 
       const monitoredIds = new Set(monitoredChats.map(c => c.chat_id));
       // Оставляем только те, которые ещё не мониторятся
       const availableChats = allChats.filter(chat => !monitoredIds.has(chat.chat_id));
-      // Преобразуем для фронта: id, title, members_count, platform
+      // Возвращаем тот же формат, что и monitored_chats
       return availableChats.map(chat => ({
-        id: chat.chat_id,
-        title: chat.chat_name,
-        members_count: chat.members_count,
-        platform: chat.platform
+        chat_id: chat.chat_id,
+        chat_name: chat.chat_name ? chat.chat_name : `Chat ${chat.chat_id}`
       }));
     } catch (error) {
       console.error('Ошибка получения доступных чатов:', error);
