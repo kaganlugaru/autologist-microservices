@@ -188,22 +188,25 @@ class TelegramParser:
                 chats = []
                 for dialog in dialogs:
                     if dialog.is_group or dialog.is_channel:
-                        chats.append({
-                            'chat_id': dialog.id,
+                        chat_data = {
+                            'chat_id': str(dialog.id),
                             'chat_name': dialog.name or str(dialog.id),
                             'active': True
-                        })
-                logger.info(f"Найдено {len(chats)} чатов для записи в базу")
+                        }
+                        chats.append(chat_data)
+                logger.info(f"Найдено {len(chats)} чатов для записи в базу. Данные: {chats}")
                 try:
                     response = self.supabase.table('all_chats').upsert(chats).execute()
                     logger.info(f"Ответ Supabase: {response}")
                     # Проверка на типичный признак ошибки
                     if hasattr(response, 'status_code') and response.status_code != 200:
                         logger.error(f"Ошибка записи в Supabase: {response}")
+                    elif hasattr(response, 'error') and response.error:
+                        logger.error(f"Ошибка Supabase: {response.error}")
                     else:
                         logger.info(f"УСПЕХ: Обновлено {len(chats)} чатов в all_chats (Supabase)")
                 except Exception as db_exc:
-                    logger.error(f"ОШИБКА при записи в Supabase: {db_exc}")
+                    logger.error(f"ОШИБКА при записи в Supabase: {db_exc}. Данные: {chats}")
             except Exception as e:
                 logger.error(f"ОШИБКА discover_chats: {e}")
 
