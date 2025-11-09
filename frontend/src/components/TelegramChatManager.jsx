@@ -10,12 +10,13 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
 
   useEffect(() => {
     loadMonitoredChats();
+    loadAvailableChats();
   }, []);
 
   // Загрузить отслеживаемые чаты
   const loadMonitoredChats = async () => {
     try {
-      const response = await axios.get(`${apiBase}/chats`);
+      const response = await axios.get(`${apiBase}/monitored-chats`);
       const data = response.data?.data || [];
       const telegramChats = data.filter(chat => chat.platform === 'telegram');
       setMonitoredChats(telegramChats);
@@ -89,12 +90,10 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
         platform: 'telegram',
         active: true
       });
-
-      loadMonitoredChats();
+      // После добавления обновляем оба списка
+      await loadMonitoredChats();
+      await loadAvailableChats();
       onUpdate?.();
-      
-      // Убираем чат из доступных, так как он теперь отслеживается
-      setAvailableChats(prev => prev.filter(c => c.id !== chat.id));
     } catch (error) {
       console.error('Ошибка добавления чата:', error);
       alert('Ошибка при добавлении чата в мониторинг');
