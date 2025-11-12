@@ -34,6 +34,7 @@ venv.bak/
 # Telegram session files
 *.session
 *.session-journal
+session.key
 
 # Logs
 logs
