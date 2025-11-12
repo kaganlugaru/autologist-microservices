@@ -35,9 +35,6 @@ venv.bak/
 *.session
 *.session-journal
 
-# ИСКЛЮЧЕНИЕ: Railway production сессия должна быть в репозитории
-!railway_production.session
-
 # Logs
 logs
 *.log

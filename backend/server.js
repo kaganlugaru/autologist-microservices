@@ -509,11 +509,28 @@ app.post('/api/migrate-phone-field', async (req, res) => {
 // ===== ОТСЛЕЖИВАЕМЫЕ ЧАТЫ =====
 
 // Получить отслеживаемые чаты
+// Получить доступные чаты (не мониторящиеся)
 app.get('/api/chats', async (req, res) => {
   try {
     const platform = req.query.platform;
+    const chats = await db.getAvailableChats(platform);
+    res.json({
+      success: true,
+      data: chats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Получить отслеживаемые чаты
+app.get('/api/monitored-chats', async (req, res) => {
+  try {
+    const platform = req.query.platform;
     const chats = await db.getMonitoredChats(platform);
-    
     res.json({
       success: true,
       data: chats
