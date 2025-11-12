@@ -6,8 +6,12 @@
 
 # --- Автоматическая расшифровка файла сессии ---
 import os
-if os.path.exists('railway_production.session.enc') and not os.path.exists('railway_production.session'):
-    print('🔐 Расшифровка файла railway_production.session.enc...')
+enc_path = os.path.join('telegram-parser', 'railway_production.session.enc')
+dec_path = os.path.join('telegram-parser', 'railway_production.session')
+print(f'📂 Текущая директория: {os.getcwd()}')
+print(f'📄 Содержимое: {os.listdir()}')
+if os.path.exists(enc_path) and not os.path.exists(dec_path):
+    print(f'🔐 Расшифровка файла {enc_path}...')
     try:
         from cryptography.fernet import Fernet
         key = os.getenv('SESSION_KEY')
@@ -15,13 +19,13 @@ if os.path.exists('railway_production.session.enc') and not os.path.exists('rail
         if not key:
             raise Exception('SESSION_KEY не задана в переменных окружения!')
         f = Fernet(key.encode())
-        with open('railway_production.session.enc', 'rb') as file:
+        with open(enc_path, 'rb') as file:
             encrypted_data = file.read()
             print(f'📦 Размер зашифрованного файла: {len(encrypted_data)} байт')
             decrypted = f.decrypt(encrypted_data)
-        with open('railway_production.session', 'wb') as file:
+        with open(dec_path, 'wb') as file:
             file.write(decrypted)
-        print('✅ Файл railway_production.session успешно расшифрован!')
+        print(f'✅ Файл {dec_path} успешно расшифрован!')
     except Exception as e:
         print(f'❌ Ошибка расшифровки: {e}')
 
