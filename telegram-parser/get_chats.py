@@ -6,11 +6,22 @@
 
 # --- Автоматическая расшифровка файла сессии ---
 import os
-enc_path = os.path.join('telegram-parser', 'railway_production.session.enc')
-dec_path = os.path.join('telegram-parser', 'railway_production.session')
+# Проверяем два возможных пути для зашифрованного файла
+enc_paths = ['railway_production.session.enc', os.path.join('telegram-parser', 'railway_production.session.enc')]
+dec_paths = ['railway_production.session', os.path.join('telegram-parser', 'railway_production.session')]
+
 print(f'📂 Текущая директория: {os.getcwd()}')
 print(f'📄 Содержимое: {os.listdir()}')
-if os.path.exists(enc_path) and not os.path.exists(dec_path):
+
+# Находим правильный путь
+enc_path, dec_path = None, None
+for i, (ep, dp) in enumerate(zip(enc_paths, dec_paths)):
+    if os.path.exists(ep):
+        enc_path, dec_path = ep, dp
+        print(f'🔍 Найден зашифрованный файл по пути: {ep}')
+        break
+
+if enc_path and not os.path.exists(dec_path):
     print(f'🔐 Расшифровка файла {enc_path}...')
     try:
         from cryptography.fernet import Fernet
