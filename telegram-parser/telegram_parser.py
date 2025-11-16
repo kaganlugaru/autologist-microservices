@@ -1,5 +1,45 @@
-import logging
+# --- Автоматическая расшифровка файла сессии ---
 import os
+# Проверяем два возможных пути для зашифрованного файла
+enc_paths = ['railway_production.session.enc', os.path.join('telegram-parser', 'railway_production.session.enc')]
+dec_paths = ['railway_production.session', os.path.join('telegram-parser', 'railway_production.session')]
+
+print(f'📂 Текущая директория: {os.getcwd()}')
+print(f'📄 Содержимое: {os.listdir()}')
+
+# Находим правильный путь
+enc_path, dec_path = None, None
+for i, (ep, dp) in enumerate(zip(enc_paths, dec_paths)):
+    if os.path.exists(ep):
+        enc_path, dec_path = ep, dp
+        print(f'🔍 Найден зашифрованный файл по пути: {ep}')
+        break
+
+if enc_path and not os.path.exists(dec_path):
+    print(f'🔐 Расшифровка файла {enc_path}...')
+    try:
+        from cryptography.fernet import Fernet
+        key = os.getenv('SESSION_KEY')
+        print(f'🔑 SESSION_KEY: {key}')
+        if not key:
+            raise Exception('SESSION_KEY не задана в переменных окружения!')
+        f = Fernet(key.encode())
+        with open(enc_path, 'rb') as file:
+            encrypted_data = file.read()
+            print(f'📦 Размер зашифрованного файла: {len(encrypted_data)} байт')
+            decrypted = f.decrypt(encrypted_data)
+        with open(dec_path, 'wb') as file:
+            file.write(decrypted)
+        print(f'✅ Файл {dec_path} успешно расшифрован!')
+    except Exception as e:
+        print(f'❌ Ошибка расшифровки: {e}')
+else:
+    if not enc_path:
+        print(f'⚠️ Зашифрованный файл сессии не найден в путях: {enc_paths}')
+    elif os.path.exists(dec_path):
+        print(f'ℹ️ Файл сессии {dec_path} уже существует')
+
+import logging
 # Настройка логгера
 os.makedirs('logs', exist_ok=True)
 logging.basicConfig(
