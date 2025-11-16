@@ -19,8 +19,8 @@ if enc_path and not os.path.exists(dec_path):
     print(f'🔐 Расшифровка файла {enc_path}...')
     try:
         from cryptography.fernet import Fernet
-        # Пробуем все возможные варианты названий переменной
-        key_vars = ['SESSION_KEY', 'TELEGRAM_SESSION_KEY', 'RAILWAY_SESSION_KEY', 'TELEGRAM_SESSION_NAME', 'AUTOLOGIST_SESSION_KEY', 'PARSER_SESSION_KEY']
+        # Пробуем все возможные варианты названий переменной (исключаем TELEGRAM_SESSION_NAME - это имя, а не ключ)
+        key_vars = ['SESSION_KEY', 'TELEGRAM_SESSION_KEY', 'RAILWAY_SESSION_KEY', 'AUTOLOGIST_SESSION_KEY', 'PARSER_SESSION_KEY', 'DECRYPT_KEY', 'ENC_KEY']
         key = None
         for var_name in key_vars:
             key = os.getenv(var_name)
@@ -30,6 +30,12 @@ if enc_path and not os.path.exists(dec_path):
         
         print(f'🔑 Итоговый ключ: {key}')
         print(f'🔑 Длина ключа: {len(key) if key else "None"}')
+        
+        # Проверяем, что ключ имеет правильный формат для Fernet (32 байта в base64)
+        if key and len(key) < 32:
+            print(f'⚠️  Ключ слишком короткий ({len(key)} символов). Нужен 32+ символов base64.')
+            key = None
+        
         print(f'🌍 ВСЕ переменные окружения с SESSION в названии:')
         for k in sorted(os.environ.keys()):
             if 'SESSION' in k.upper():
@@ -42,6 +48,13 @@ if enc_path and not os.path.exists(dec_path):
                 if 'SESSION' in k.upper() or 'TELEGRAM' in k.upper() or 'KEY' in k.upper():
                     # Показываем полную переменную для диагностики
                     print(f'   🔍 {k} = {v}')
+            
+            # 🚨 ВРЕМЕННОЕ РЕШЕНИЕ для Railway - используем встроенный ключ
+            print('🔧 ВРЕМЕННОЕ РЕШЕНИЕ: Используем встроенный ключ для Railway')
+            key = 'xvzDat2hSFT2H6DmtVzuOeQLIwx5btmeR55VhLbxIKc='
+            print(f'🔑 Используем встроенный ключ длиной: {len(key)} символов')
+        
+        if not key:
             raise Exception('Ни одна из переменных ключа не найдена! Проверяемые переменные: ' + ', '.join(key_vars))
         f = Fernet(key.encode())
         with open(enc_path, 'rb') as file:
