@@ -17,9 +17,25 @@ const PORT = process.env.PORT || 3001;
 let db;
 
 // Middleware
-// Настройка CORS: разрешаем только фронт Vercel
+// Настройка CORS: разрешаем и production, и локальную разработку
+const allowedOrigins = [
+  'https://autologist-microservices.vercel.app', // Production
+  'http://localhost:5173',                       // Vite dev server
+  'http://localhost:3000',                       // React dev server (альтернатива)
+  'http://127.0.0.1:5173'                       // Localhost альтернатива
+];
+
 app.use(cors({
-  origin: 'https://autologist-microservices.vercel.app',
+  origin: function (origin, callback) {
+    // Разрешаем запросы без origin (например, мобильные приложения)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());

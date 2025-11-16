@@ -196,6 +196,7 @@ class TelegramParser:
         self.client = None
         self.keywords = []
         self.monitored_chats = []
+        self.last_keywords_reload = 0  # Время последней перезагрузки ключевых слов
         self.stats = {
             'messages_processed': 0,
             'duplicates': 0,
@@ -245,6 +246,7 @@ class TelegramParser:
             keywords_data = self.load_keywords_sync()
             self.keywords = [item['keyword'].lower() for item in keywords_data]
             logger.info(f"ДАННЫЕ: Загружено {len(self.keywords)} ключевых слов")
+            logger.info(f"ДИАГНОСТИКА: Список ключевых слов: {self.keywords}")
             
             chats_data = self.load_monitored_chats_sync()
             self.monitored_chats = chats_data
@@ -437,8 +439,16 @@ class TelegramParser:
         try:
             response = self.supabase.table('keywords').select('keyword').eq('active', True).execute()
             self.keywords = [item['keyword'].lower() for item in response.data]
+            import time
+            self.last_keywords_reload = time.time()
+            logger.info(f"ПЕРЕЗАГРУЗКА: Обновлен список ключевых слов: {self.keywords}")
         except Exception as e:
             logger.error(f"ОШИБКА: Загрузка ключевых слов: {e}")
+
+    def should_reload_keywords(self):
+        """Проверка, нужно ли перезагружать ключевые слова (каждые 5 минут)"""
+        import time
+        return time.time() - self.last_keywords_reload > 300  # 5 минут
 
     def load_monitored_chats_sync(self):
         """Синхронная загрузка отслеживаемых чатов"""
@@ -594,7 +604,16 @@ class TelegramParser:
     # - Можно комбинировать: "груз;дальнобой;срочно" - все три слова должны быть в тексте
     def check_keywords(self, text):
         found_keywords = []
+        
+        # Проверка на None или пустой текст
+        if not text:
+            logger.info(f"ДИАГНОСТИКА: Текст сообщения пустой или None")
+            return found_keywords
+            
         text_lower = text.lower()
+        
+        logger.info(f"ДИАГНОСТИКА: Проверяем текст: '{text[:100]}...' в списке из {len(self.keywords)} ключевых слов")
+        logger.info(f"ДИАГНОСТИКА: Доступные ключевые слова: {self.keywords}")
         
         for keyword in self.keywords:
             # Проверяем, содержит ли ключевое слово оператор логического И (;)
@@ -604,19 +623,25 @@ class TelegramParser:
                 
                 # Проверяем, что ВСЕ части присутствуют в тексте
                 all_parts_found = True
+                found_parts = []
                 for part in keyword_parts:
-                    if part and part not in text_lower:
+                    if part and part in text_lower:
+                        found_parts.append(part)
+                    elif part:
                         all_parts_found = False
                         break
                 
                 # Если все части найдены, добавляем в результат
                 if all_parts_found and len(keyword_parts) > 1:
                     found_keywords.append(keyword)
+                    logger.info(f"ДИАГНОСТИКА: Найдено составное ключевое слово '{keyword}' (части: {found_parts})")
             else:
                 # Обычная проверка для простых ключевых слов
                 if keyword in text_lower:
                     found_keywords.append(keyword)
+                    logger.info(f"ДИАГНОСТИКА: Найдено простое ключевое слово '{keyword}'")
         
+        logger.info(f"ДИАГНОСТИКА: ИТОГО найдено ключевых слов: {found_keywords}")
         return found_keywords
 
     async def get_sender_info(self, message):
@@ -1085,7 +1110,16 @@ class TelegramParser:
             # Получаем информацию об отправителе
             sender_info = await self.get_sender_info(message)
             
+            # Периодически перезагружаем ключевые слова
+            if self.should_reload_keywords():
+                await self.load_keywords()
+                
             # Проверяем на ключевые слова
+            logger.info(f"ДИАГНОСТИКА: Начинаем проверку ключевых слов для сообщения...")
+            logger.info(f"ДИАГНОСТИКА: Текст сообщения для проверки: '{message.text[:100] if message.text else 'НЕТ ТЕКСТА'}...'")
+            logger.info(f"ДИАГНОСТИКА: Загружено ключевых слов в парсер: {len(self.keywords)}")
+            logger.info(f"ДИАГНОСТИКА: Список ключевых слов: {self.keywords}")
+            
             keywords_found = self.check_keywords(message.text)
             has_keywords = len(keywords_found) > 0
             

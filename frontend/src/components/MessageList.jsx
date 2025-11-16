@@ -6,10 +6,32 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
   const [searchText, setSearchText] = useState('');
   const [duplicateInfo, setDuplicateInfo] = useState({});
   const [loadingDuplicates, setLoadingDuplicates] = useState({});
+  const [expandedMessages, setExpandedMessages] = useState({}); // Для разворачивания сообщений
   
   // Пагинация
   const [currentPage, setCurrentPage] = useState(1);
   const [messagesPerPage, setMessagesPerPage] = useState(20);
+
+  // Функция для переключения развернутого состояния сообщения
+  const toggleExpanded = (messageId) => {
+    setExpandedMessages(prev => ({
+      ...prev,
+      [messageId]: !prev[messageId]
+    }));
+  };
+
+  // Функция для форматирования текста сообщений - убираем лишние переносы
+  const formatMessageText = (text) => {
+    if (!text) return '';
+    
+    // Заменяем множественные переносы строк на одиночные
+    // Убираем переносы в середине предложений, оставляем только при двойном переносе
+    return text
+      .replace(/\n{3,}/g, '\n\n')  // Множественные переносы заменяем на двойной
+      .replace(/\n(?!\n)/g, ' ')   // Одиночные переносы заменяем пробелами
+      .replace(/\s+/g, ' ')        // Множественные пробелы заменяем одним
+      .trim();                     // Убираем пробелы в начале и конце
+  };
 
   // Функция для загрузки информации о дубликатах
   const loadDuplicateInfo = async (messageId) => {
@@ -115,7 +137,7 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
       
       // Пробуем открыть через десктопное приложение
       const desktopUrl = `tg://resolve?domain=${username}`;
-      const webUrl = `https://t.me/${username}`;
+      const telegramWebUrl = `https://t.me/${username}`;
       
       // Создаем невидимый iframe для попытки открыть десктопное приложение
       const iframe = document.createElement('iframe');
@@ -126,7 +148,7 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
       // Если через 1 секунду не сработало, открываем веб-версию
       setTimeout(() => {
         document.body.removeChild(iframe);
-        window.open(webUrl, '_blank');
+        window.open(telegramWebUrl, '_blank');
       }, 1000);
     }
   };
@@ -134,14 +156,17 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
   // Функция для создания WhatsApp диалога
   const openWhatsAppChat = (phone) => {
     const cleanPhone = formatPhoneForLink(phone);
-    // Открываем в новой вкладке
-    const whatsappWindow = window.open(`https://wa.me/${cleanPhone}`, '_blank');
-    if (whatsappWindow) {
-      // Небольшая задержка для корректного открытия
-      setTimeout(() => {
-        whatsappWindow.focus();
-      }, 100);
-    }
+    // Пытаемся открыть десктопное приложение, если не получается - веб-версию
+    const desktopUrl = `whatsapp://send?phone=${cleanPhone}`;
+    const whatsappWebUrl = `https://wa.me/${cleanPhone}`;
+    
+    // Открываем десктопное приложение
+    window.location.href = desktopUrl;
+    
+    // Резервный вариант - веб-версия через 2 секунды
+    setTimeout(() => {
+      window.open(whatsappWebUrl, '_blank');
+    }, 2000);
   };
 
   // Функция для создания Telegram диалога по номеру телефона  
@@ -149,25 +174,25 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
     const cleanPhone = formatPhoneForLink(phone);
     console.log('🔗 Открываем телефон в Telegram:', cleanPhone);
     
-    // Открываем веб-версию Telegram
-    const webUrl = 'https://web.telegram.org/k/';
-    window.open(webUrl, '_blank');
+    // Пытаемся открыть десктопное приложение
+    const desktopUrl = `tg://resolve?phone=${cleanPhone}`;
+    const webTelegramUrl = `https://t.me/+${cleanPhone}`;
+    
+    // Открываем десктопное приложение
+    window.location.href = desktopUrl;
+    
+    // Резервный вариант - веб-версия через 2 секунды
+    setTimeout(() => {
+      window.open(webTelegramUrl, '_blank');
+    }, 2000);
     
     // Копируем номер в буфер обмена для удобства поиска
     if (navigator.clipboard) {
       navigator.clipboard.writeText(cleanPhone).then(() => {
-        setTimeout(() => {
-          alert(`Telegram открыт! Номер скопирован: "${cleanPhone}"\nВставьте его в поиск Telegram для создания диалога.`);
-        }, 1000);
+        console.log('📋 Номер скопирован в буфер обмена:', cleanPhone);
       }).catch(() => {
-        setTimeout(() => {
-          alert(`Telegram открыт! Найдите пользователя по номеру: "${cleanPhone}"`);
-        }, 1000);
+        console.log('⚠️ Не удалось скопировать номер в буфер обмена');
       });
-    } else {
-      setTimeout(() => {
-        alert(`Telegram открыт! Найдите пользователя по номеру: "${cleanPhone}"`);
-      }, 1000);
     }
   };
 
@@ -199,8 +224,8 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
       openTelegramChat(message.username);
     } else {
       // Если нет username, открываем веб-версию Telegram
-      const webUrl = 'https://web.telegram.org/k/';
-      window.open(webUrl, '_blank');
+      const webTelegramUrl = 'https://web.telegram.org/k/';
+      window.open(webTelegramUrl, '_blank');
       
       // Копируем имя пользователя в буфер обмена для удобства поиска
       const searchText = getAuthorDisplayName(message).replace('@', '');
@@ -265,11 +290,13 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
       <div className="message-cards">
         {paginatedMessages.map(message => {
           const phoneNumbers = extractPhoneNumbers(message.message_text);
+          const isExpanded = expandedMessages[message.id];
+          const isLongMessage = message.message_text.length > 200; // Считаем длинным если больше 200 символов
           
           return (
-            <div key={message.id} className={`message-card ${message.is_duplicate ? 'duplicate' : 'new'} ${message.contains_keywords ? 'has-keywords' : ''}`}>
+            <div key={message.id} className={`message-card ${message.is_duplicate ? 'duplicate' : 'new'} ${message.contains_keywords ? 'has-keywords' : ''} ${isExpanded ? 'expanded' : ''}`}>
               <div className="message-header">
-                <span className="message-author" title="Открыть профиль пользователя" onClick={() => openUserProfile(message)}>
+                <span className="message-author clickable" title="Открыть профиль в Telegram" onClick={() => openUserProfile(message)}>
                   {getAuthorDisplayName(message)}
                 </span>
                 <span className={`status ${message.is_duplicate ? 'duplicate' : 'new'}`}>
@@ -280,32 +307,30 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
               </div>
 
               <div className="message-content">
-                <div className="content-label">📝 Текст:</div>
-                <p className="message-text">{message.message_text}</p>
+                <span className="message-text">{formatMessageText(message.message_text)}</span>
                 
-                {/* Кликабельные телефоны с кнопками */}
+                {/* Компактные телефоны в одну строку */}
                 {phoneNumbers.length > 0 && (
-                  <div className="phone-section">
-                    {phoneNumbers.map((phone, index) => (
-                      <div key={index} className="phone-item">
-                        <a className="message-phone" href={`tel:${formatPhoneForLink(phone)}`}>📞 {phone}</a>
-                        <div className="contact-buttons">
-                          <button 
-                            className="whatsapp-btn"
-                            onClick={() => openWhatsAppChat(phone)}
-                            title="Написать в WhatsApp"
-                          >
-                            WhatsApp
-                          </button>
-                          <button 
-                            className="telegram-btn"
-                            onClick={() => openTelegramByPhone(phone)}
-                            title="Написать в Telegram"
-                          >
-                            Telegram
-                          </button>
-                        </div>
-                      </div>
+                  <div className="phone-section-compact">
+                    📞 {phoneNumbers.map((phone, index) => (
+                      <span key={index} className="phone-item-inline">
+                        <a className="message-phone" href={`tel:${formatPhoneForLink(phone)}`}>{phone}</a>
+                        <button 
+                          className="whatsapp-btn-mini"
+                          onClick={() => openWhatsAppChat(phone)}
+                          title="WhatsApp"
+                        >
+                          WA
+                        </button>
+                        <button 
+                          className="telegram-btn-mini"
+                          onClick={() => openTelegramByPhone(phone)}
+                          title="Telegram"
+                        >
+                          TG
+                        </button>
+                        {index < phoneNumbers.length - 1 && <span className="phone-separator"> • </span>}
+                      </span>
                     ))}
                   </div>
                 )}

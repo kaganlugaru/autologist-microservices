@@ -1,302 +1,241 @@
-/* УЛЬТРА-КОМПАКТНЫЕ СТИЛИ - ПОЛНОЕ ПЕРЕОПРЕДЕЛЕНИЕ ВСЕХ КОНФЛИКТОВ */
+/* ЧИСТЫЕ СТИЛИ ДЛЯ MESSAGELIST - БЕЗ АНИМАЦИЙ И ЭФФЕКТОВ */
 
-/* Основной контейнер */
-.message-list {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 100% !important;
-  padding: 2px !important;
+/* БАЗОВАЯ БЛОКИРОВКА ВСЕХ ИНТЕРАКТИВНЫХ ЭФФЕКТОВ */
+.message-list,
+.message-list *,
+.message-list *:hover,
+.message-list *:focus,
+.message-list *:active {
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
+  will-change: auto !important;
+  cursor: default !important;
+  outline: none !important;
+  zoom: 1 !important;
+  scale: 1 !important;
 }
 
-/* Панель управления */
+/* ИСКЛЮЧЕНИЯ ДЛЯ ФУНКЦИОНАЛЬНЫХ ЭЛЕМЕНТОВ - ТОЛЬКО КУРСОР */
+.message-author.clickable,
+.message-phone,
+.whatsapp-btn-mini,
+.telegram-btn-mini,
+.message-list button,
+.message-list input,
+.message-list a {
+  cursor: pointer !important;
+}
+
+/* УСИЛЕННАЯ БЛОКИРОВКА HOVER ДЛЯ ВСЕХ ЭЛЕМЕНТОВ */
+.message-list *:hover,
+.message-author.clickable:hover,
+.message-phone:hover,
+.whatsapp-btn-mini:hover,
+.telegram-btn-mini:hover,
+.message-list button:hover,
+.message-list input:hover,
+.message-list a:hover {
+  background-color: inherit !important;
+  color: inherit !important;
+  border-color: inherit !important;
+  box-shadow: inherit !important;
+  text-decoration: inherit !important;
+  transform: none !important;
+  scale: 1 !important;
+  filter: none !important;
+}
+
+/* ОСНОВНОЙ КОНТЕЙНЕР */
+.message-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 2px;
+  font-size: 14px;
+}
+
+/* ПАНЕЛЬ УПРАВЛЕНИЯ */
 .message-list .controls {
-  margin-bottom: 4px !important;
-  padding: 4px !important;
-  background: #f8f9fa !important;
-  border-radius: 2px !important;
+  margin-bottom: 4px;
+  padding: 4px;
+  background: #f8f9fa;
+  border-radius: 2px;
 }
 
 .message-list .controls .search-bar input {
-  width: 100% !important;
-  padding: 6px 8px !important;
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
-  font-size: 13px !important;
-  margin-bottom: 6px !important;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 6px;
 }
 
 .message-list .controls .filter-buttons {
-  display: flex !important;
-  gap: 4px !important;
-  flex-wrap: wrap !important;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 
 .message-list .controls .filter-buttons button {
-  padding: 4px 8px !important;
-  font-size: 12px !important;
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
-  background: white !important;
-  cursor: pointer !important;
-  margin: 0 !important;
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  margin: 0;
 }
 
-/* МАКСИМАЛЬНО КОМПАКТНЫЕ КАРТОЧКИ СООБЩЕНИЙ */
+/* КОНТЕЙНЕР ДЛЯ КАРТОЧЕК */
 .message-list .message-cards {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 1px !important; 
-  margin: 0 !important;
-  padding: 0 !important;
-  flex: 1 !important;
-  overflow-y: auto !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 4px;
+  flex: 1;
+  overflow-y: auto;
 }
 
-/* КЛЮЧЕВЫЕ СТИЛИ ДЛЯ КАРТОЧЕК - МАКСИМАЛЬНАЯ СПЕЦИФИЧНОСТЬ */
-.message-list .message-cards .message-card,
-div.message-list .message-cards .message-card,
-body .message-list .message-cards .message-card {
-  /* Отступы и размеры - АДАПТИВНЫЕ */
-  margin: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 1px !important;
-  padding: 8px 12px !important;
-  gap: 0 !important;
-  
-  /* Шрифт - ОПТИМИЗИРОВАННЫЙ ДЛЯ ЧИТАЕМОСТИ */
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  
-  /* Внешний вид с границами */
-  border: 1px solid #e0e0e0 !important;
-  border-radius: 6px !important;
-  background-color: #fafafa !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
-  
-  /* Убираем все эффекты */
-  transition: none !important;
-  animation: none !important;
-  transform: none !important;
-  
-  /* Структура - АДАПТИВНАЯ ВЫСОТА */
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: auto !important;
-  height: auto !important;
-  max-height: none !important;
+/* КАРТОЧКИ СООБЩЕНИЙ */
+.message-card {
+  margin: 0 0 1px 0;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #fafafa;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.2;
 }
 
-/* Чередующиеся цвета для лучшего разделения */
-.message-list .message-cards .message-card:nth-child(even) {
-  background-color: #f8f9fa !important;
-  border-color: #dee2e6 !important;
+/* ЗАГОЛОВОК КАРТОЧКИ */
+.message-card .message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #666;
 }
 
-.message-list .message-cards .message-card:nth-child(odd) {
-  background-color: #ffffff !important;
-  border-color: #e9ecef !important;
+/* КОНТЕНТ СООБЩЕНИЯ */
+.message-card .message-content {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #333;
+  word-wrap: break-word;
 }
 
-/* Состояние при наведении - БЕЗ ИЗМЕНЕНИЙ */
-.message-list .message-cards .message-card:hover,
-div.message-list .message-cards .message-card:hover,
-body .message-list .message-cards .message-card:hover {
-  margin: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 1px !important;
-  padding: 8px 12px !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  border: 1px solid #d0d7de !important;
-  border-radius: 6px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-  transition: none !important;
-  animation: none !important;
-  transform: none !important;
+/* МЕТАДАННЫЕ */
+.message-card .message-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
 }
 
-/* Заголовок сообщения */
-.message-list .message-cards .message-card .message-header {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  margin-bottom: 2px !important;
-  padding: 0 !important;
-  flex-wrap: wrap !important;
-  gap: 4px !important;
+/* КНОПКИ ДЕЙСТВИЙ */
+.message-card .message-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
 }
 
-.message-list .message-cards .message-card .message-header .source {
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  color: #666 !important;
+.message-card .message-actions button {
+  padding: 2px 6px;
+  font-size: 11px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #666;
 }
 
-.message-list .message-cards .message-card .message-header .message-author {
-  font-weight: 600 !important;
-  font-size: 13px !important;
-  color: #2563eb !important;
+/* СТАТИСТИКА */
+.message-list .stats {
+  margin-top: 4px;
+  padding: 4px;
+  background: #f8f9fa;
+  border-radius: 2px;
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+/* ДУБЛИКАТЫ */
+.message-card.duplicate {
+  background-color: #fff3cd;
+  border-color: #ffeaa7;
+}
+
+/* ТИПЫ СООБЩЕНИЙ */
+.message-card.telegram { border-left: 3px solid #0088cc; }
+.message-card.whatsapp { border-left: 3px solid #25d366; }
+
+/* ФИЛЬТРЫ */
+.message-list .controls .filter-buttons button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* КОМПАКТНЫЕ ТЕЛЕФОНЫ В ОДНУ СТРОКУ */
+.phone-section-compact {
+  margin: 6px 0;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.phone-item-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.message-phone {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.whatsapp-btn-mini, .telegram-btn-mini {
+  padding: 2px 4px;
+  font-size: 10px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #666;
+  font-weight: bold;
+  min-width: 20px;
+}
+
+.whatsapp-btn-mini {
+  border-color: #25d366;
+  color: #25d366;
+}
+
+.telegram-btn-mini {
+  border-color: #0088cc;
+  color: #0088cc;
+}
+
+.phone-separator {
+  color: #999;
+  font-weight: bold;
+}
+
+/* КЛИКАБЕЛЬНЫЙ АВТОР - БЕЗ ВИЗУАЛЬНЫХ ЭФФЕКТОВ */
+.message-author.clickable {
   cursor: pointer !important;
-  flex: 1 !important;
-}
-
-.message-list .message-cards .message-card .message-header .message-author::before {
-  content: '💎 ';
-  margin-right: 4px;
-}
-
-.message-list .message-cards .message-card .message-header .message-time::before {
-  content: '🕒 ';
-  margin-right: 4px;
-}
-
-.message-list .message-cards .message-card .message-header .chat-info::before {
-  content: '💬 ';
-  margin-right: 4px;
-}
-
-.message-list .message-cards .message-card .message-header .status.new::before {
-  content: '✅ ';
-  margin-right: 4px;
-}
-
-.message-list .message-cards .message-card .message-header .status.duplicate::before {
-  content: '🔄 ';
-  margin-right: 4px;
-}
-
-.message-list .message-cards .message-card .message-header .message-time,
-.message-list .message-cards .message-card .message-header .chat-info {
-  font-size: 12px !important;
-  color: #999 !important;
-}
-
-/* Содержимое сообщения */
-.message-list .message-cards .message-card .message-content {
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  margin: 0 0 4px 0 !important;
-  padding: 0 !important;
-  color: #333 !important;
-  word-wrap: break-word !important;
-  white-space: pre-wrap !important;
-}
-
-/* Номера телефонов */
-.message-list .message-cards .message-card .phone-numbers {
-  margin-top: 2px !important;
-  padding: 0 !important;
-}
-
-.message-list .message-cards .message-card .phone-numbers .phone-link {
-  display: inline-block !important;
-  background: #e3f2fd !important;
-  color: #1976d2 !important;
-  padding: 3px 8px !important;
-  margin: 0 4px 2px 0 !important;
-  border-radius: 4px !important;
-  text-decoration: none !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-}
-
-/* Статусы и метки */
-.message-list .message-cards .message-card .status,
-.message-list .message-cards .message-card .badge {
-  font-size: 12px !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  margin: 0 4px 0 0 !important;
-  display: inline-block !important;
-  font-weight: 500 !important;
-}
-
-/* Контейнер статуса - БЕЗ ОТДЕЛЬНОГО БЛОКА */
-.message-list .message-cards .message-card .status-info {
-  display: inline-block !important;
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.message-list .message-cards .message-card .message-footer {
-  margin-top: 2px !important;
-  padding: 0 !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center !important;
-  gap: 4px !important;
-}
-
-.message-list .message-cards .message-card .message-footer .keywords {
-  font-size: 12px !important;
-  color: #1976d2 !important;
-  background: #e3f2fd !important;
-  padding: 2px 6px !important;
-  border-radius: 4px !important;
-  margin: 0 !important;
-}
-
-.message-list .message-cards .message-card .status.new,
-.message-list .message-cards .message-card .badge.new {
-  background: #e8f5e8 !important;
-  color: #2e7d32 !important;
-}
-
-.message-list .message-cards .message-card .status.duplicate,
-.message-list .message-cards .message-card .badge.duplicate {
-  background: #fff3e0 !important;
-  color: #f57c00 !important;
-}
-
-/* Действия */
-.message-list .message-cards .message-card .message-actions {
-  margin-top: 2px !important;
-  padding: 0 !important;
-}
-
-.message-list .message-cards .message-card .message-actions button {
-  font-size: 12px !important;
-  padding: 3px 8px !important;
-  margin: 0 4px 0 0 !important;
-  border: 1px solid #ddd !important;
-  border-radius: 4px !important;
-  background: white !important;
-  cursor: pointer !important;
-}
-
-/* Специальные типы карточек */
-.message-list .message-cards .message-card.new {
-  border-left: 3px solid #10b981 !important;
-}
-
-.message-list .message-cards .message-card.duplicate {
-  border-left: 3px solid #f59e0b !important;
-}
-
-.message-list .message-cards .message-card.has-keywords {
-  border-left: 3px solid #3b82f6 !important;
-}
-
-/* Убираем все возможные margin/padding из глобальных стилей */
-.message-list * {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-.message-list .message-cards .message-card * {
-  margin: 0 !important;
-}
-
-/* Финальное переопределение всех возможных конфликтующих стилей */
-body .app .message-list .message-cards .message-card,
-.app .message-list .message-cards .message-card,
-html .app .message-list .message-cards .message-card {
-  margin-top: 0 !important;
-  margin-bottom: 1px !important;
-  padding: 8px 12px !important;
-  font-size: 14px !important;
-  line-height: 1.2 !important;
-  height: auto !important;
-  min-height: auto !important;
-  max-height: none !important;
+  color: #0066cc;
+  text-decoration: underline;
+  font-weight: 500;
 }
