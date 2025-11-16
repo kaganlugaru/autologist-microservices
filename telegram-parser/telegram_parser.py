@@ -19,7 +19,7 @@ if enc_path and not os.path.exists(dec_path):
     print(f'🔐 Расшифровка файла {enc_path}...')
     try:
         from cryptography.fernet import Fernet
-        key = os.getenv('SESSION_KEY')
+        key = os.getenv('SESSION_KEY') or os.getenv('TELEGRAM_SESSION_KEY') or os.getenv('RAILWAY_SESSION_KEY')
         print(f'🔑 SESSION_KEY: {key}')
         print(f'🔑 SESSION_KEY length: {len(key) if key else "None"}')
         print(f'🌍 All env vars with SESSION: {[k for k in os.environ.keys() if "SESSION" in k]}')
