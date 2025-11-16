@@ -12,6 +12,9 @@ package-lock.json
 .env.test.local
 .env.production.local
 
+# Archive folder (optimized files)
+archive/
+
 # Build outputs
 dist/
 build/
