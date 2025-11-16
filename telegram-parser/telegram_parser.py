@@ -19,12 +19,30 @@ if enc_path and not os.path.exists(dec_path):
     print(f'🔐 Расшифровка файла {enc_path}...')
     try:
         from cryptography.fernet import Fernet
-        key = os.getenv('SESSION_KEY') or os.getenv('TELEGRAM_SESSION_KEY') or os.getenv('RAILWAY_SESSION_KEY')
-        print(f'🔑 SESSION_KEY: {key}')
-        print(f'🔑 SESSION_KEY length: {len(key) if key else "None"}')
-        print(f'🌍 All env vars with SESSION: {[k for k in os.environ.keys() if "SESSION" in k]}')
+        # Пробуем все возможные варианты названий переменной
+        key_vars = ['SESSION_KEY', 'TELEGRAM_SESSION_KEY', 'RAILWAY_SESSION_KEY', 'TELEGRAM_SESSION_NAME', 'AUTOLOGIST_SESSION_KEY', 'PARSER_SESSION_KEY']
+        key = None
+        for var_name in key_vars:
+            key = os.getenv(var_name)
+            if key:
+                print(f'🔑 Найден ключ в переменной: {var_name}')
+                break
+        
+        print(f'🔑 Итоговый ключ: {key}')
+        print(f'🔑 Длина ключа: {len(key) if key else "None"}')
+        print(f'🌍 ВСЕ переменные окружения с SESSION в названии:')
+        for k in sorted(os.environ.keys()):
+            if 'SESSION' in k.upper():
+                print(f'   {k} = {os.environ[k][:10]}...' if len(os.environ[k]) > 10 else f'   {k} = {os.environ[k]}')
+        
         if not key:
-            raise Exception('SESSION_KEY не задана в переменных окружения!')
+            print('🚨 КРИТИЧЕСКАЯ ИНФОРМАЦИЯ ДЛЯ ДИАГНОСТИКИ:')
+            print(f'🌍 Все переменные окружения ({len(os.environ)} штук):')
+            for k, v in sorted(os.environ.items()):
+                if 'SESSION' in k.upper() or 'TELEGRAM' in k.upper() or 'KEY' in k.upper():
+                    # Показываем полную переменную для диагностики
+                    print(f'   🔍 {k} = {v}')
+            raise Exception('Ни одна из переменных ключа не найдена! Проверяемые переменные: ' + ', '.join(key_vars))
         f = Fernet(key.encode())
         with open(enc_path, 'rb') as file:
             encrypted_data = file.read()
