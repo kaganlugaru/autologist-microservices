@@ -16,8 +16,25 @@ class DatabaseManager {
       const { data: allChats, error: allError } = await query;
       if (allError) throw allError;
 
-      // Возвращаем все чаты из all_chats
-      return allChats.map(chat => ({
+      // Получаем уже отслеживаемые чаты
+      let monitoredQuery = this.supabase
+        .from('monitored_chats')
+        .select('chat_id');
+      if (platform) {
+        monitoredQuery = monitoredQuery.eq('platform', platform);
+      }
+      const { data: monitoredChats, error: monitoredError } = await monitoredQuery;
+      if (monitoredError) throw monitoredError;
+
+      // Создаём множество ID отслеживаемых чатов для быстрого поиска
+      const monitoredChatIds = new Set(monitoredChats.map(chat => chat.chat_id));
+
+      // Фильтруем доступные чаты, исключая уже отслеживаемые
+      const availableChats = allChats.filter(chat => !monitoredChatIds.has(chat.chat_id));
+
+      console.log(`📊 Всего чатов: ${allChats.length}, отслеживаемых: ${monitoredChats.length}, доступных: ${availableChats.length}`);
+
+      return availableChats.map(chat => ({
         chat_id: chat.chat_id,
         chat_name: chat.chat_name ? chat.chat_name : `Chat ${chat.chat_id}`
       }));

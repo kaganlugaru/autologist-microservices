@@ -16,12 +16,15 @@ export default function TelegramChatManager({ apiBase, onUpdate, keywords = [] }
   // Загрузить отслеживаемые чаты
   const loadMonitoredChats = async () => {
     try {
-      const response = await axios.get(`${apiBase}/chats`);
+      console.log('🔄 Загружаем отслеживаемые чаты...');
+      const response = await axios.get(`${apiBase}/monitored-chats`);
+      console.log('✅ Получены отслеживаемые чаты:', response.data);
       const data = response.data?.data || [];
       const telegramChats = data.filter(chat => chat.platform === 'telegram');
+      console.log('📱 Telegram чаты:', telegramChats);
       setMonitoredChats(telegramChats);
     } catch (error) {
-      console.error('Ошибка загрузки отслеживаемых чатов:', error);
+      console.error('❌ Ошибка загрузки отслеживаемых чатов:', error);
       setMonitoredChats([]);
     }
   };
