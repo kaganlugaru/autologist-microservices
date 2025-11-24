@@ -34,7 +34,8 @@ const LoginForm = ({ onLogin }) => {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin(data.user);
+        console.log('✅ [LOGIN] Успешный вход, данные:', data);
+        onLogin(data.user, data.token); // Передаем токен в App.jsx
       } else {
         setError(data.error || 'Ошибка входа');
       }

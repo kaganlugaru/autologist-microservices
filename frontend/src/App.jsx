@@ -16,6 +16,23 @@ axios.defaults.timeout = 30000; // 30 секунд
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 axios.defaults.withCredentials = true; // Для передачи cookies
 
+// Функции работы с токеном
+const getStoredToken = () => localStorage.getItem('authToken');
+const setStoredToken = (token) => localStorage.setItem('authToken', token);
+const clearStoredToken = () => localStorage.removeItem('authToken');
+
+// Настройка axios interceptor для автоматической отправки токена
+axios.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+    console.log('🔑 [AXIOS] Отправляем Authorization header с токеном');
+  } else {
+    console.log('🚫 [AXIOS] Токен отсутствует, отправляем только cookies');
+  }
+  return config;
+});
+
 function App() {
   // Состояние аутентификации
   const [user, setUser] = useState(null);
@@ -46,6 +63,7 @@ function App() {
 
   const checkAuth = async () => {
     try {
+      console.log('🔍 [AUTH] Проверяем аутентификацию...');
       const response = await fetch(`${API_BASE}/auth/me`, {
         credentials: 'include'
       });
@@ -53,16 +71,29 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+        console.log('✅ [AUTH] Пользователь авторизован:', data.user.username);
+      } else {
+        console.log('🚫 [AUTH] Пользователь не авторизован (статус:', response.status, ')');
+        // Очищаем сохраненный токен если он недействительный
+        clearStoredToken();
       }
     } catch (error) {
-      console.log('User not authenticated');
+      console.log('❌ [AUTH] Ошибка проверки аутентификации:', error.message);
+      clearStoredToken();
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, token) => {
     setUser(userData);
+    
+    // Сохраняем токен для fallback аутентификации
+    if (token) {
+      setStoredToken(token);
+      console.log('💾 [AUTH] Токен сохранен в localStorage');
+    }
+    
     // Загружаем данные после успешного входа
     loadEssentialData(userData);
     setTimeout(() => {
@@ -79,7 +110,12 @@ function App() {
     } catch (error) {
       console.error('Logout error:', error);
     }
+    
+    // Очищаем состояние и токен
     setUser(null);
+    clearStoredToken();
+    console.log('🗑️ [AUTH] Токен удален из localStorage');
+    
     setMessages([]);
     setChats([]);
     setKeywords([]);

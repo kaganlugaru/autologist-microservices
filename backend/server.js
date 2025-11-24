@@ -114,17 +114,28 @@ app.get('/', (req, res) => {
 
 // Middleware для проверки JWT токена
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+  const cookieToken = req.cookies.token;
+  const headerToken = req.headers.authorization?.split(' ')[1];
+  const token = cookieToken || headerToken;
+  
+  // Диагностика для production
+  console.log(`🔐 [AUTH] ${req.method} ${req.path}`);
+  console.log(`🍪 Cookie token: ${cookieToken ? 'есть' : 'нет'}`);
+  console.log(`📋 Header token: ${headerToken ? 'есть' : 'нет'}`);
+  console.log(`🔑 Final token: ${token ? 'есть' : 'НЕТ'}`);
   
   if (!token) {
+    console.log(`❌ [AUTH] Токен отсутствует для ${req.method} ${req.path}`);
     return res.status(401).json({ error: 'Токен доступа отсутствует' });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
+    console.log(`✅ [AUTH] Пользователь ${decoded.username} (${decoded.role}) авторизован`);
     next();
   } catch (error) {
+    console.log(`❌ [AUTH] Недействительный токен: ${error.message}`);
     return res.status(403).json({ error: 'Недействительный токен' });
   }
 };
@@ -174,8 +185,9 @@ app.post('/api/auth/login', async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 24 * 60 * 60 * 1000 // 24 часа
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Позволяем cross-domain в production
+      maxAge: 24 * 60 * 60 * 1000, // 24 часа
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined // Не ограничиваем домен в production
     });
 
     res.json({
@@ -184,7 +196,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         username: user.username,
         role: user.role
-      }
+      },
+      token: token // Добавляем токен в ответ для fallback аутентификации
     });
   } catch (error) {
     console.error('Ошибка входа:', error);
