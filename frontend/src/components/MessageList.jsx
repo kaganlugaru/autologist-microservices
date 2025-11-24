@@ -1,16 +1,90 @@
 import React, { useState } from 'react';
 import './MessageList.css';
 
-export default function MessageList({ messages = [], onUpdate, apiBase }) {
+export default function MessageList({ messages = [], onUpdate, apiBase, keywordFilter, onKeywordFilterChange, loading, lastUpdateTime, user }) {
+  
   const [filter, setFilter] = useState('all');
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(''); // Локальное значение в поле
+  const [activeSearch, setActiveSearch] = useState(''); // Активный поисковый запрос
+  const [searchRange, setSearchRange] = useState('24h');
   const [duplicateInfo, setDuplicateInfo] = useState({});
   const [loadingDuplicates, setLoadingDuplicates] = useState({});
-  const [expandedMessages, setExpandedMessages] = useState({}); // Для разворачивания сообщений
+  const [expandedMessages, setExpandedMessages] = useState({});
+  const [isSearchMode, setIsSearchMode] = useState(false); // Режим поиска
   
   // Пагинация
   const [currentPage, setCurrentPage] = useState(1);
   const [messagesPerPage, setMessagesPerPage] = useState(20);
+
+  // Обработка ввода в поле поиска
+  const handleSearchInputChange = (e) => {
+    setSearchText(e.target.value);
+  };
+
+  // Выполнение поиска
+  const executeSearch = () => {
+    if (!searchText.trim()) return;
+    
+    console.log('🔍 [MessageList] Выполняем поиск:', `"${searchText.trim()}"`, 'Диапазон:', searchRange);
+    setActiveSearch(searchText.trim());
+    setIsSearchMode(true);
+    
+    if (onKeywordFilterChange) {
+      onKeywordFilterChange(searchText.trim(), searchRange);
+    } else {
+      console.error('🛑 [MessageList] onKeywordFilterChange не передан!');
+    }
+  };
+
+  // Сброс поиска
+  const resetSearch = () => {
+    console.log('🔄 [MessageList] Сброс поиска');
+    setSearchText('');
+    setActiveSearch('');
+    setIsSearchMode(false);
+    
+    if (onKeywordFilterChange) {
+      onKeywordFilterChange('', searchRange);
+    }
+  };
+
+  // Обработка изменения диапазона поиска
+  const handleRangeChange = (newRange) => {
+    console.log('📅 [MessageList] Диапазон изменен:', newRange);
+    setSearchRange(newRange);
+    
+    // Если активен поиск, перезапускаем с новым диапазоном
+    if (isSearchMode && activeSearch) {
+      console.log('📅 [MessageList] Повторный поиск с новым диапазоном:', `"${activeSearch}"`);
+      if (onKeywordFilterChange) {
+        onKeywordFilterChange(activeSearch, newRange);
+      }
+    }
+  };
+
+  // Обработка Enter в поле поиска
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      executeSearch();
+    }
+  };
+
+  // Опции диапазона поиска
+  const searchRangeOptions = [
+    { value: '1h', label: 'Последний час' },
+    { value: '6h', label: 'Последние 6 часов' },
+    { value: '24h', label: 'Последние 24 часа' },
+    { value: '3d', label: 'Последние 3 дня' },
+    { value: '7d', label: 'Последняя неделя' },
+    { value: '30d', label: 'Последний месяц' },
+    { value: 'all', label: 'За всё время' }
+  ];
+
+  // Получить текст диапазона
+  const getRangeText = (range) => {
+    const option = searchRangeOptions.find(opt => opt.value === range);
+    return option ? option.label : range;
+  };
 
   // Функция для переключения развернутого состояния сообщения
   const toggleExpanded = (messageId) => {
@@ -56,17 +130,24 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
     }
   };
 
-  const filteredMessages = messages.filter(msg => {
+  // Безопасная проверка messages
+  const safeMessages = Array.isArray(messages) ? messages : [];
+
+  const filteredMessages = safeMessages.filter(msg => {
     const matchesFilter = filter === 'all' || 
       (filter === 'duplicates' && msg.is_duplicate) ||
       (filter === 'new' && !msg.is_duplicate) ||
       (filter === 'keywords' && msg.contains_keywords);
     
-    const matchesSearch = !searchText || 
+    // 🔴 КРИТИЧНОЕ ИСПРАВЛЕНИЕ:
+    // При активном поиске НЕ применяем локальную фильтрацию!
+    // Сервер уже отфильтровал сообщения по keywordFilter
+    const matchesSearch = !isSearchMode && (!searchText || 
       msg.message_text.toLowerCase().includes(searchText.toLowerCase()) ||
-      msg.chat_name.toLowerCase().includes(searchText.toLowerCase());
+      msg.chat_name.toLowerCase().includes(searchText.toLowerCase()));
     
-    return matchesFilter && matchesSearch;
+    // Если режим поиска - показываем ВСЕ пришедшие с сервера сообщения
+    return matchesFilter && (isSearchMode || matchesSearch);
   });
 
   // Пагинация
@@ -250,13 +331,58 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
   return (
     <div className="message-list">
       <div className="controls">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="🔍 Поиск по тексту или чату..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-          />
+        <div className="search-section">
+          <div className="search-bar">
+            <input
+              type="text"
+              placeholder="🔍 Поиск: груз ИЛИ тандем;алматы;130 (через ; для сложного поиска)"
+              value={searchText}
+              onChange={handleSearchInputChange}
+              onKeyPress={handleKeyPress}
+            />
+            <button 
+              onClick={executeSearch} 
+              disabled={!searchText.trim() || loading}
+              className="search-button primary"
+            >
+              🔍 Найти
+            </button>
+            {isSearchMode && (
+              <button 
+                onClick={resetSearch}
+                className="search-button secondary"
+              >
+                🔄 Сбросить
+              </button>
+            )}
+          </div>
+          
+          {/* Диапазон поиска всегда видимый */}
+          <div className="search-range-selector">
+            <label>Диапазон поиска:</label>
+            <select 
+              value={searchRange} 
+              onChange={(e) => handleRangeChange(e.target.value)}
+              className="range-select"
+            >
+              {searchRangeOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Индикатор активного поиска */}
+          {isSearchMode && activeSearch && (
+            <div className="search-status">
+              {activeSearch.includes(';') ? (
+                <span>🔗 Сложный поиск: <strong>[{activeSearch.split(';').join('] + [')}]</strong> за <strong>{getRangeText(searchRange)}</strong></span>
+              ) : (
+                <span>🔍 Поиск: <strong>"{activeSearch}"</strong> за <strong>{getRangeText(searchRange)}</strong></span>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="filter-buttons">
@@ -264,34 +390,50 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
             className={filter === 'all' ? 'active' : ''}
             onClick={() => setFilter('all')}
           >
-            Все ({messages.length})
+            Все ({safeMessages.length})
           </button>
           <button 
             className={filter === 'new' ? 'active' : ''}
             onClick={() => setFilter('new')}
           >
-            ✅ Новые ({messages.filter(m => !m.is_duplicate).length})
+            ✅ Новые ({safeMessages.filter(m => !m.is_duplicate).length})
           </button>
           <button 
             className={filter === 'duplicates' ? 'active' : ''}
             onClick={() => setFilter('duplicates')}
           >
-            🔄 Дубликаты ({messages.filter(m => m.is_duplicate).length})
+            🔄 Дубликаты ({safeMessages.filter(m => m.is_duplicate).length})
           </button>
           <button 
             className={filter === 'keywords' ? 'active' : ''}
             onClick={() => setFilter('keywords')}
           >
-            🔍 С ключевыми словами ({messages.filter(m => m.contains_keywords).length})
+            🔍 С ключевыми словами ({safeMessages.filter(m => m.contains_keywords).length})
           </button>
         </div>
       </div>
 
       <div className="message-cards">
-        {paginatedMessages.map(message => {
-          const phoneNumbers = extractPhoneNumbers(message.message_text);
-          const isExpanded = expandedMessages[message.id];
-          const isLongMessage = message.message_text.length > 200; // Считаем длинным если больше 200 символов
+        {/* 🚨 КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ РЕНДЕРИНГА */}
+        {console.log('🖼️ [MessageList] РЕНДЕРИНГ СПИСКА:')}
+        {console.log('  📝 paginatedMessages для отображения:', paginatedMessages.length)}
+        {console.log('  📋 Первые 3 ID:', paginatedMessages.slice(0, 3).map(m => m.id))}
+        
+        {paginatedMessages.length === 0 ? (
+          <>
+            {console.log('❌ [MessageList] ПУСТОЙ СПИСОК! Показываем заглушку')}
+            <div className="no-messages">
+              📝 Нет сообщений по выбранному фильтру
+            </div>
+          </>
+        ) : (
+          <>
+            {console.log('✅ [MessageList] ОТОБРАЖАЕМ СООБЩЕНИЯ:', paginatedMessages.length)}
+            {paginatedMessages.map(message => {
+              console.log('🔄 [MessageList] Рендерим сообщение ID:', message.id);
+              const phoneNumbers = extractPhoneNumbers(message.message_text);
+              const isExpanded = expandedMessages[message.id];
+              const isLongMessage = message.message_text.length > 200;
           
           return (
             <div key={message.id} className={`message-card ${message.is_duplicate ? 'duplicate' : 'new'} ${message.contains_keywords ? 'has-keywords' : ''} ${isExpanded ? 'expanded' : ''}`}>
@@ -390,6 +532,8 @@ export default function MessageList({ messages = [], onUpdate, apiBase }) {
             </div>
           );
         })}
+          </>
+        )}
       </div>
 
       {/* Пагинация */}

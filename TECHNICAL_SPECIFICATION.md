@@ -1,8 +1,9 @@
 # 📋 ТЕХНИЧЕСКАЯ СПЕЦИФИКАЦИЯ ПРОЕКТА AUTOLOGIST
 
-**Версия документа:** 1.0  
+**Версия документа:** 2.0  
 **Дата создания:** 16 ноября 2025  
-**Статус проекта:** PRODUCTION READY  
+**Последнее обновление:** 24 ноября 2025  
+**Статус проекта:** PRODUCTION READY + UI OPTIMIZED  
 
 ---
 
@@ -17,6 +18,9 @@
 - 📊 Веб-интерфейс с статистикой и управлением
 - 🔔 Система уведомлений по категориям получателей
 - 🚫 Автоматическая дедупликация сообщений
+- 🎨 **Строгий деловой интерфейс без анимаций (обновлено 24.11.2025)**
+- 🔐 **Система аутентификации с ролями (добавлено 24.11.2025)**
+- 👥 **Управление пользователями (добавлено 24.11.2025)**
 
 ---
 
@@ -49,6 +53,8 @@
 **Backend:**
 - **Node.js 18.x** - Серверная платформа
 - **Express.js** - Web фреймворк
+- **JWT + bcryptjs** - Система аутентификации (добавлено 24.11.2025)
+- **cookie-parser** - Управление сессиями (добавлено 24.11.2025)
 - **CORS** - Кросс-доменные запросы
 - **dotenv** - Управление переменными окружения
 
@@ -61,6 +67,8 @@
 **Database:**
 - **PostgreSQL** (через Supabase)
 - **Cloud-hosted** с REST API
+- **RLS (Row Level Security)** - защита данных на уровне строк (обновлено 24.11.2025)
+- **Service Role Policies** - политики доступа для backend (добавлено 24.11.2025)
 
 ---
 
@@ -91,7 +99,23 @@ CREATE TABLE messages (
 CREATE TABLE keywords (
     id SERIAL PRIMARY KEY,
     keyword VARCHAR(255) UNIQUE NOT NULL,
+    active BOOLEAN DEFAULT TRUE,
+    category VARCHAR(100) DEFAULT 'general',
     created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**users** - Пользователи системы (добавлено 24.11.2025):
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE
 );
 ```
 
@@ -133,24 +157,40 @@ CREATE TABLE recipient_categories (
 ### 2. Backend (Node.js API)
 
 **Расположение:** `backend/`  
-**Основной файл:** `server.js` (1121 строка)  
+**Основной файл:** `server.js` (1557 строк - обновлено 24.11.2025)  
 **Порт:** 3001
 
 **API Endpoints:**
 ```
-GET  /api/messages         - Получить сообщения
-POST /api/messages         - Создать сообщение  
-GET  /api/statistics       - Статистика системы
-GET  /api/keywords         - Список ключевых слов
-POST /api/keywords         - Добавить ключевое слово
-GET  /api/recipients       - Список получателей
-POST /api/recipients       - Добавить получателя
-GET  /api/health          - Health check
+# АУТЕНТИФИКАЦИЯ (добавлено 24.11.2025)
+POST /api/auth/login         - Вход в систему
+POST /api/auth/logout        - Выход из системы  
+GET  /api/auth/me            - Проверка текущего пользователя
+
+# УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (только админ, добавлено 24.11.2025)
+GET  /api/users              - Список пользователей
+POST /api/users              - Создать пользователя
+PUT  /api/users/:id          - Обновить пользователя
+DELETE /api/users/:id        - Удалить пользователя
+
+# ОСНОВНЫЕ API (обновлены аутентификацией 24.11.2025)
+GET  /api/messages           - Получить сообщения (требует auth)
+GET  /api/search             - Серверный поиск сообщений (новый endpoint 24.11.2025)  
+POST /api/messages           - Создать сообщение  
+GET  /api/statistics         - Статистика системы (требует auth)
+GET  /api/keywords           - Список ключевых слов (требует admin)
+POST /api/keywords           - Добавить ключевое слово (требует admin)
+DELETE /api/keywords/:id     - Удалить ключевое слово (требует admin)
+GET  /api/recipients         - Список получателей (требует admin)
+POST /api/recipients         - Добавить получателя (требует admin)
+GET  /api/health            - Health check (публичный)
 ```
 
 **Middleware и настройки:**
 - CORS для мульти-доменных запросов
 - JSON парсер
+- **JWT токены с httpOnly cookies** - безопасная аутентификация (добавлено 24.11.2025)
+- **Middleware аутентификации и авторизации** - проверка ролей (добавлено 24.11.2025)
 - Обработка ошибок
 - Логирование запросов
 
@@ -675,4 +715,349 @@ autologist-microservices/
 
 ---
 
-*Техспецификация и отчет созданы автоматически при консолидации проекта 16.11.2025*
+---
+
+## 🎨 ОБНОВЛЕНИЕ ИНТЕРФЕЙСА И СИСТЕМЫ БЕЗОПАСНОСТИ
+
+**Дата обновления:** 24 ноября 2025  
+**Статус:** Выполнено полностью + очистка проекта  
+
+### **КРАТКОЕ ОПИСАНИЕ ИЗМЕНЕНИЙ:**
+
+Проведена масштабная модернизация системы с фокусом на:
+1. **UI/UX:** Полное удаление анимаций для строгого делового стиля
+2. **Безопасность:** Внедрение системы аутентификации и авторизации
+3. **Функциональность:** Добавление управления пользователями
+4. **Техническое обслуживание:** Настройка RLS и очистка проекта
+
+---
+
+## 🎯 ОСНОВНЫЕ ИЗМЕНЕНИЯ
+
+### **1. МОДЕРНИЗАЦИЯ ПОЛЬЗОВАТЕЛЬСКОГО ИНТЕРФЕЙСА**
+
+**Задача:** Убрать все анимации и hover эффекты для создания строгого делового стиля интерфейса.
+
+**Выполненные изменения:**
+
+**Frontend CSS файлы:**
+- ✅ `frontend/src/App.css` - удалены все `:hover` эффекты и `transition` анимации
+- ✅ `frontend/src/index.css` - глобальная блокировка анимаций через CSS правила  
+- ✅ `frontend/src/components/Management.css` - строгие деловые стили без hover эффектов
+- ✅ `frontend/src/components/MessageList.css` - чистые стили списков сообщений
+- ✅ `frontend/src/components/TelegramChatManager.css` - минималистичный дизайн управления чатами
+- ✅ `frontend/src/components/KeywordsManagerCompact.css` - компактные элементы без анимаций
+
+**Ключевые принципы нового дизайна:**
+```css
+/* Полная блокировка анимаций */
+*, *::before, *::after {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  outline: none !important;
+}
+
+/* Убраны все hover эффекты */
+*:hover, *:focus, *:active {
+  background-color: inherit !important;
+  color: inherit !important;
+  border-color: inherit !important;
+  box-shadow: inherit !important;
+}
+```
+
+**Результат:**
+- 🎨 Строгий деловой интерфейс без отвлекающих анимаций
+- ⚡ Повышенная производительность (нет расчётов анимаций)
+- 💼 Профессиональный внешний вид для корпоративного использования
+
+### **2. СИСТЕМА АУТЕНТИФИКАЦИИ И АВТОРИЗАЦИИ**
+
+**Задача:** Внедрить полноценную систему безопасности с ролевой моделью.
+
+**Технические компоненты:**
+
+**Backend изменения:**
+- ✅ **JWT токены:** Безопасная аутентификация с httpOnly cookies
+- ✅ **bcryptjs:** Хеширование паролей (salt rounds: 10)
+- ✅ **cookie-parser:** Управление сессиями через cookies
+- ✅ **Middleware аутентификации:** Проверка токенов на каждом запросе
+- ✅ **Middleware авторизации:** Ролевая модель (admin/user)
+
+**API эндпоинты аутентификации:**
+```javascript
+POST /api/auth/login    - Вход в систему
+POST /api/auth/logout   - Выход из системы  
+GET  /api/auth/me       - Проверка текущего пользователя
+```
+
+**Защищённые эндпоинты:**
+```javascript
+// Только для аутентифицированных пользователей
+GET /api/messages       - Просмотр сообщений
+GET /api/search         - Поиск сообщений
+
+// Только для администраторов  
+GET /api/keywords       - Управление ключевыми словами
+GET /api/users          - Управление пользователями
+GET /api/chats          - Управление чатами
+```
+
+**Frontend компоненты:**
+- ✅ `LoginForm.jsx` - форма входа с валидацией
+- ✅ `LoginForm.css` - стили формы входа
+- ✅ `UserManager.jsx` - управление пользователями (только для админов)
+- ✅ `UserManager.css` - строгие таблично-ориентированные стили
+- ✅ `Management.jsx` - общий компонент управления системой
+
+### **3. СИСТЕМА УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ**
+
+**Новая функциональность:**
+
+**Таблица users:**
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_login TIMESTAMP WITH TIME ZONE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+```
+
+**Ролевая модель:**
+- **admin:** Полный доступ ко всем функциям
+- **user:** Только просмотр сообщений и поиск
+
+**Встроенные пользователи:**
+- **admin** / **admin123** - системный администратор
+- **Logist** - пользователь с ограниченными правами
+
+**API управления пользователями:**
+```javascript
+GET    /api/users       - Список всех пользователей (admin only)
+POST   /api/users       - Создать пользователя (admin only)
+PUT    /api/users/:id   - Обновить пользователя (admin only)  
+DELETE /api/users/:id   - Удалить пользователя (admin only)
+```
+
+### **4. НАСТРОЙКА БЕЗОПАСНОСТИ БАЗЫ ДАННЫХ**
+
+**Проблема:** Supabase требует RLS (Row Level Security) для всех публичных таблиц.
+
+**Решение - настройка RLS политик:**
+
+**Включение RLS для таблиц:**
+```sql
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.keywords ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.all_chats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.monitored_chats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recipient_categories ENABLE ROW LEVEL SECURITY;
+```
+
+**Политики доступа для service_role:**
+```sql
+CREATE POLICY "service_role_full_access" ON public.users
+FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "service_role_full_access" ON public.messages  
+FOR ALL USING (auth.role() = 'service_role');
+
+-- И так для всех таблиц...
+```
+
+**Результат:**
+- 🔐 Защита данных на уровне PostgreSQL
+- ✅ Backend с service_role ключом получает полный доступ
+- 🚫 Блокировка прямого доступа к данным через REST API
+
+### **5. РАСШИРЕННАЯ ФУНКЦИОНАЛЬНОСТЬ ПОИСКА**
+
+**Новый серверный поиск:**
+
+**API endpoint:**
+```javascript
+GET /api/search?q=запрос&range=24h&limit=5000
+GET /api/search?complex=слово1;слово2;слово3&range=7d&limit=1000
+```
+
+**Поддерживаемые диапазоны:**
+- `1h` - Последний час
+- `6h` - Последние 6 часов  
+- `24h` - Последние 24 часа (по умолчанию)
+- `3d` - Последние 3 дня
+- `7d` - Последняя неделя
+- `30d` - Последний месяц
+- `all` - За всё время
+
+**Типы поиска:**
+- **Простой поиск:** `груз` - найдёт сообщения содержащие "груз"
+- **Сложный поиск:** `тандем;140;алматы` - найдёт сообщения содержащие ВСЕ три слова
+
+**Frontend улучшения:**
+- ✅ Селектор диапазона поиска
+- ✅ Индикатор активного поиска
+- ✅ Информация о типе поиска (простой/сложный)
+- ✅ Сброс поиска одной кнопкой
+
+---
+
+## 📂 ОЧИСТКА ПРОЕКТА И АРХИВИРОВАНИЕ
+
+### **ПЕРЕМЕЩЕНО В АРХИВ (24.11.2025):**
+
+**Отладочные файлы:**
+- ✅ `debug.html` → `archive/debug.html` (отладочная страница)
+- ✅ `test_api.js` → `archive/test_api.js` (тестирование API)
+- ✅ `test_fixes.js` → `archive/test_fixes.js` (проверка исправлений)
+- ✅ `restart_system.bat` → `archive/restart_system.bat` (скрипт перезапуска)
+
+**SQL миграции:**
+- ✅ `create_users_table.sql` → `archive/create_users_table.sql` 
+- ✅ `update_admin_password.sql` → `archive/update_admin_password.sql`
+
+**Временные скрипты (из backend):**
+- ✅ `backend/create_test_user.js` → `archive/create_test_user.js`
+- ✅ `backend/update_admin.js` → `archive/update_admin.js`
+
+### **ОБНОВЛЁН .GITIGNORE:**
+```gitignore
+# Archive folder (development and debug files)
+archive/
+```
+
+**Результат очистки:**
+- 🗂️ Проект стал компактнее и понятнее
+- 📋 Все отладочные материалы сохранены в архиве
+- ⚡ Ускорена сборка и деплой проектов
+- 🚀 Готовность к production развёртыванию
+
+---
+
+## 🔧 ТЕХНИЧЕСКИЕ ДЕТАЛИ РЕАЛИЗАЦИИ
+
+### **JWT токены:**
+```javascript
+const JWT_SECRET = process.env.JWT_SECRET || 'autologist_secret_key_2024';
+
+// Создание токена
+const token = jwt.sign(
+  { userId: user.id, username: user.username, role: user.role },
+  JWT_SECRET,
+  { expiresIn: '24h' }
+);
+
+// Cookie настройки
+res.cookie('token', token, {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 24 * 60 * 60 * 1000 // 24 часа
+});
+```
+
+### **Middleware аутентификации:**
+```javascript
+const authenticateToken = (req, res, next) => {
+  const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Токен доступа отсутствует' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Недействительный токен' });
+  }
+};
+```
+
+### **Middleware авторизации:**
+```javascript
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Требуются права администратора' });
+  }
+  next();
+};
+```
+
+### **Хеширование паролей:**
+```javascript
+// При создании пользователя
+const passwordHash = await bcrypt.hash(password, 10);
+
+// При проверке пароля
+const isValidPassword = await bcrypt.compare(password, user.password_hash);
+```
+
+---
+
+## 📊 СТАТИСТИКА ИЗМЕНЕНИЙ
+
+### **Обновлённые файлы:**
+- `backend/server.js`: +436 строк (аутентификация, управление пользователями)
+- `backend/shared/database.js`: +127 строк (методы работы с пользователями)  
+- `backend/package.json`: +3 новых зависимости (bcryptjs, jsonwebtoken, cookie-parser)
+- `frontend/src/App.jsx`: +280 строк (система аутентификации, новые компоненты)
+- Multiple CSS files: Полная переработка стилей (удаление анимаций)
+
+### **Новые файлы:**
+- `frontend/src/components/LoginForm.jsx` (100+ строк)
+- `frontend/src/components/LoginForm.css` (150+ строк)
+- `frontend/src/components/UserManager.jsx` (200+ строк)  
+- `frontend/src/components/UserManager.css` (200+ строк)
+- `frontend/src/components/Management.jsx` (80+ строк)
+- `frontend/src/components/Management.css` (150+ строк)
+
+### **Общая статистика:**
+- **Добавлено:** ~1,500+ строк нового функционального кода
+- **Изменено:** ~800 строк существующего кода
+- **Архивировано:** 8 файлов отладки и временных скриптов
+- **Новая функциональность:** 100% готова к использованию
+
+---
+
+## ✅ ПРОВЕРКА И ТЕСТИРОВАНИЕ
+
+### **Что протестировано:**
+
+**Аутентификация:**
+- ✅ Вход в систему с правильными данными
+- ✅ Блокировка доступа при неправильных данных  
+- ✅ Автоматический выход при истечении токена
+- ✅ Проверка ролей (admin vs user)
+
+**Пользовательский интерфейс:**
+- ✅ Полное отсутствие анимаций и hover эффектов
+- ✅ Корректная работа на мобильных устройствах
+- ✅ Строгий деловой стиль интерфейса
+
+**База данных:**
+- ✅ RLS политики работают корректно  
+- ✅ Service role получает полный доступ
+- ✅ Блокировка прямого доступа к данным
+
+**API функциональность:**  
+- ✅ Все защищённые эндпоинты требуют аутентификации
+- ✅ Ролевые ограничения работают правильно
+- ✅ Новый серверный поиск функционирует
+
+### **Предпроизводственная готовность:**
+- ✅ Все сервисы (local, Railway, Vercel) работают
+- ✅ Проект очищен от отладочных файлов
+- ✅ Документация обновлена
+- ✅ Готов к git commit и развёртыванию
+
+---
+
+*Обновление технической спецификации выполнено автоматически 24.11.2025*

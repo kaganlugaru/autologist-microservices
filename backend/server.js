@@ -5,6 +5,9 @@ const cors = require('cors');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Импорт общего модуля для работы с БД
@@ -12,6 +15,9 @@ const DatabaseManager = require('./shared/database');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// JWT секретный ключ (в продакшене должен быть в переменных окружения)
+const JWT_SECRET = process.env.JWT_SECRET || 'autologist_secret_key_2024';
 
 // Инициализация базы данных
 let db;
@@ -39,6 +45,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.static('public'));
 
 // ===== HEALTH CHECK =====
@@ -66,6 +73,202 @@ app.get('/', (req, res) => {
   });
 });
 
+// ===== MIDDLEWARE АУТЕНТИФИКАЦИИ =====
+
+// Middleware для проверки JWT токена
+const authenticateToken = (req, res, next) => {
+  const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Токен доступа отсутствует' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Недействительный токен' });
+  }
+};
+
+// Middleware для проверки роли администратора
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Требуются права администратора' });
+  }
+  next();
+};
+
+// ===== API АУТЕНТИФИКАЦИИ =====
+
+// Вход в систему
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Логин и пароль обязательны' });
+    }
+
+    // Находим пользователя
+    const user = await db.getUserByUsername(username);
+    if (!user) {
+      return res.status(401).json({ error: 'Неверный логин или пароль' });
+    }
+
+    // Проверяем пароль
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'Неверный логин или пароль' });
+    }
+
+    // Обновляем время последнего входа
+    await db.updateLastLogin(user.id);
+
+    // Создаем JWT токен
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Устанавливаем cookie с токеном
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 часа
+    });
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка входа:', error);
+    res.status(500).json({ error: 'Ошибка сервера' });
+  }
+});
+
+// Выход из системы
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('token');
+  res.json({ success: true, message: 'Выход выполнен успешно' });
+});
+
+// Проверка текущего пользователя
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  res.json({
+    user: {
+      id: req.user.userId,
+      username: req.user.username,
+      role: req.user.role
+    }
+  });
+});
+
+// ===== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (только для админов) =====
+
+// Получить всех пользователей
+app.get('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const users = await db.getAllUsers();
+    res.json(users);
+  } catch (error) {
+    console.error('Ошибка получения пользователей:', error);
+    res.status(500).json({ error: 'Ошибка получения пользователей' });
+  }
+});
+
+// Создать пользователя
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { username, password, role = 'user' } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Логин и пароль обязательны' });
+    }
+
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Логин должен содержать минимум 3 символа' });
+    }
+
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Пароль должен содержать минимум 4 символа' });
+    }
+
+    // Хешируем пароль
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Создаем пользователя
+    const newUser = await db.createUser(username, passwordHash, role);
+
+    res.json({
+      id: newUser.id,
+      username: newUser.username,
+      role: newUser.role,
+      created_at: newUser.created_at
+    });
+  } catch (error) {
+    console.error('Ошибка создания пользователя:', error);
+    if (error.code === '23505') {
+      res.status(409).json({ error: 'Пользователь с таким логином уже существует' });
+    } else {
+      res.status(500).json({ error: 'Ошибка создания пользователя' });
+    }
+  }
+});
+
+// Обновить пользователя
+app.put('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, password, role, is_active } = req.body;
+    
+    const updates = {};
+    if (username) updates.username = username;
+    if (password) updates.password_hash = await bcrypt.hash(password, 10);
+    if (role) updates.role = role;
+    if (typeof is_active === 'boolean') updates.is_active = is_active;
+
+    const updatedUser = await db.updateUser(parseInt(id), updates);
+
+    res.json({
+      id: updatedUser.id,
+      username: updatedUser.username,
+      role: updatedUser.role,
+      is_active: updatedUser.is_active,
+      updated_at: updatedUser.updated_at
+    });
+  } catch (error) {
+    console.error('Ошибка обновления пользователя:', error);
+    res.status(500).json({ error: 'Ошибка обновления пользователя' });
+  }
+});
+
+// Удалить пользователя
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Не позволяем удалить самого себя
+    if (parseInt(id) === req.user.userId) {
+      return res.status(400).json({ error: 'Нельзя удалить самого себя' });
+    }
+
+    await db.deleteUser(parseInt(id));
+    res.json({ success: true, message: 'Пользователь удален из базы' });
+  } catch (error) {
+    console.error('Ошибка удаления пользователя:', error);
+    res.status(500).json({ error: 'Ошибка удаления пользователя' });
+  }
+});
+
 // ===== API ENDPOINTS =====
 
 // Проверка статуса сервера
@@ -89,14 +292,13 @@ app.get('/api/status', async (req, res) => {
 
 // ===== СООБЩЕНИЯ =====
 
-// Получить последние сообщения с поддержкой фильтров
-app.get('/api/messages', async (req, res) => {
+// Получить последние сообщения (без поиска - для начального просмотра)
+app.get('/api/messages', authenticateToken, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 1000;
     const since = req.query.since; // ISO строка даты для фильтра за период
-    const keywords = req.query.keywords; // Ключевые слова для фильтрации
     
-    const messages = await db.getRecentMessages(limit, since, keywords);
+    const messages = await db.getRecentMessages(limit, since, null); // Без поиска по ключевым словам
     
     res.json({
       success: true,
@@ -105,11 +307,97 @@ app.get('/api/messages', async (req, res) => {
       filters: {
         limit,
         since: since || null,
-        keywords: keywords || null
+        type: 'recent'
       }
     });
   } catch (error) {
     console.error('Ошибка получения сообщений:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Функция для вычисления даты начала по диапазону
+function getDateByRange(range) {
+  const now = new Date();
+  switch(range) {
+    case '1h': now.setHours(now.getHours() - 1); break;
+    case '6h': now.setHours(now.getHours() - 6); break;
+    case '24h': now.setHours(now.getHours() - 24); break;
+    case '3d': now.setDate(now.getDate() - 3); break;
+    case '7d': now.setDate(now.getDate() - 7); break;
+    case '30d': now.setDate(now.getDate() - 30); break;
+    case 'all': return null; // Все время
+    default: now.setHours(now.getHours() - 24); break; // По умолчанию 24 часа
+  }
+  return now.toISOString();
+}
+
+// Функция для получения времени 24 часа назад
+function get24HoursAgo() {
+  const now = new Date();
+  now.setHours(now.getHours() - 24);
+  return now.toISOString();
+}
+
+// Серверный поиск сообщений по всей БД
+app.get('/api/search', authenticateToken, async (req, res) => {
+  try {
+    const query = req.query.q; // Простой поиск
+    const complexQuery = req.query.complex; // Сложный поиск через ;
+    const limit = parseInt(req.query.limit) || 5000; // Больше лимит для поиска
+    const range = req.query.range || '24h'; // Диапазон поиска
+    const since = getDateByRange(range); // Вычисляем дату начала
+    
+    // Определяем тип поиска
+    const searchQuery = complexQuery || query;
+    const isComplexSearch = !!complexQuery;
+    
+    console.log('🔍 [Backend] Поиск:', { 
+      query: searchQuery, 
+      range, 
+      since, 
+      limit,
+      isComplex: isComplexSearch,
+      keywords: isComplexSearch ? searchQuery.split(';') : [searchQuery]
+    });
+    
+    if (!searchQuery) {
+      return res.status(400).json({
+        success: false,
+        error: 'Поисковый запрос не указан'
+      });
+    }
+    
+    let messages;
+    if (isComplexSearch) {
+      // Сложный поиск по нескольким ключевым словам
+      const keywords = searchQuery.split(';').map(k => k.trim()).filter(k => k);
+      messages = await db.searchMessagesByMultipleKeywords(keywords, limit, since);
+      console.log('🔗 [Backend] Найдено сообщений по ключам:', keywords, '→', messages?.length || 0);
+    } else {
+      // Обычный поиск по одному запросу
+      messages = await db.getRecentMessages(limit, since, searchQuery);
+      console.log('🔍 [Backend] Найдено сообщений:', messages?.length || 0);
+    }
+    
+    res.json({
+      success: true,
+      data: messages,
+      count: messages.length,
+      filters: {
+        query: searchQuery,
+        limit,
+        since,
+        range,
+        type: isComplexSearch ? 'complex_search' : 'simple_search',
+        keywords: isComplexSearch ? searchQuery.split(';') : [searchQuery]
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка поиска сообщений:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -159,15 +447,18 @@ app.post('/api/messages/:id/ai-processed', async (req, res) => {
 // ===== КЛЮЧЕВЫЕ СЛОВА =====
 
 // Получить все ключевые слова
-app.get('/api/keywords', async (req, res) => {
+app.get('/api/keywords', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    console.log('🔑 [Backend] Запрос keywords от пользователя:', req.user.username);
     const keywords = await db.getKeywords();
+    console.log('🔑 [Backend] Найдено keywords:', keywords?.length || 0);
     
     res.json({
       success: true,
       data: keywords
     });
   } catch (error) {
+    console.error('🔑 [Backend] Ошибка keywords:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -176,7 +467,7 @@ app.get('/api/keywords', async (req, res) => {
 });
 
 // Добавить ключевое слово
-app.post('/api/keywords', async (req, res) => {
+app.post('/api/keywords', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { keyword } = req.body;
     
@@ -213,7 +504,7 @@ app.post('/api/keywords', async (req, res) => {
 });
 
 // Обновить ключевое слово
-app.put('/api/keywords/:id', async (req, res) => {
+app.put('/api/keywords/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { active, category } = req.body;
@@ -245,32 +536,40 @@ app.put('/api/keywords/:id', async (req, res) => {
 });
 
 // Удалить ключевое слово
-app.delete('/api/keywords/:id', async (req, res) => {
+app.delete('/api/keywords/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🗑️ [Backend] Удаляем ключевое слово:', id);
     
     // Проверяем, является ли id числом (ID) или строкой (keyword)
     const isNumericId = !isNaN(parseInt(id));
+    console.log('🔍 [Backend] Тип ID:', isNumericId ? 'числовой' : 'текстовый');
     
     let query = db.supabase.from('keywords').delete();
     
     if (isNumericId) {
       // Удаляем по ID
+      console.log('📊 [Backend] Удаление по числовому ID:', parseInt(id));
       query = query.eq('id', parseInt(id));
     } else {
       // Удаляем по тексту ключевого слова
-      query = query.eq('keyword', decodeURIComponent(id));
+      const decodedKeyword = decodeURIComponent(id);
+      console.log('📝 [Backend] Удаление по тексту:', decodedKeyword);
+      query = query.eq('keyword', decodedKeyword);
     }
 
-    const { error } = await query;
+    const { data, error } = await query;
+    console.log('📋 [Backend] Результат удаления:', { data, error });
 
     if (error) throw error;
 
+    console.log('✅ [Backend] Ключевое слово успешно удалено');
     res.json({
       success: true,
       message: 'Ключевое слово удалено'
     });
   } catch (error) {
+    console.error('❌ [Backend] Ошибка удаления ключевого слова:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -281,7 +580,7 @@ app.delete('/api/keywords/:id', async (req, res) => {
 // ===== ПОЛУЧАТЕЛИ СООБЩЕНИЙ (РЕДИРЕКТ НА НОВУЮ СИСТЕМУ) =====
 
 // Получить всех получателей - редирект на новую систему категорий
-app.get('/api/recipients', async (req, res) => {
+app.get('/api/recipients', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { data, error } = await db.supabase
       .from('recipient_categories')
@@ -308,7 +607,7 @@ app.get('/api/recipients', async (req, res) => {
 // ===== ПОЛУЧАТЕЛИ ПО КАТЕГОРИЯМ (НОВАЯ СИСТЕМА) =====
 
 // Получить всех получателей по категориям
-app.get('/api/recipient-categories', async (req, res) => {
+app.get('/api/recipient-categories', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { data, error } = await db.supabase
       .from('recipient_categories')
@@ -333,7 +632,7 @@ app.get('/api/recipient-categories', async (req, res) => {
 });
 
 // Добавить нового получателя по категории
-app.post('/api/recipient-categories', async (req, res) => {
+app.post('/api/recipient-categories', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { name, username, phone, category, active } = req.body;
 
@@ -438,7 +737,7 @@ app.patch('/api/recipient-categories/:id', async (req, res) => {
 });
 
 // Удалить получателя по категории
-app.delete('/api/recipient-categories/:id', async (req, res) => {
+app.delete('/api/recipient-categories/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -526,7 +825,7 @@ app.post('/api/migrate-phone-field', async (req, res) => {
 
 // Получить отслеживаемые чаты
 // Получить доступные чаты (не мониторящиеся)
-app.get('/api/chats', async (req, res) => {
+app.get('/api/chats', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const platform = req.query.platform;
     const chats = await db.getAvailableChats(platform);
@@ -543,7 +842,7 @@ app.get('/api/chats', async (req, res) => {
 });
 
 // Получить отслеживаемые чаты
-app.get('/api/monitored-chats', async (req, res) => {
+app.get('/api/monitored-chats', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const platform = req.query.platform;
     const chats = await db.getMonitoredChats(platform);
@@ -560,7 +859,7 @@ app.get('/api/monitored-chats', async (req, res) => {
 });
 
 // Добавить чат в отслеживание
-app.post('/api/chats', async (req, res) => {
+app.post('/api/chats', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const chatData = req.body;
     const result = await db.addMonitoredChat(chatData);
@@ -606,7 +905,7 @@ app.patch('/api/chats/:id', async (req, res) => {
 });
 
 // Удалить чат из отслеживания
-app.delete('/api/chats/:id', async (req, res) => {
+app.delete('/api/chats/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const chatId = req.params.id;
     
@@ -633,7 +932,7 @@ app.delete('/api/chats/:id', async (req, res) => {
 // ===== ОБЪЯВЛЕНИЯ =====
 
 // Получить объявления
-app.get('/api/announcements', async (req, res) => {
+app.get('/api/announcements', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const status = req.query.status;
     const announcements = await db.getAnnouncements(status);
@@ -691,7 +990,7 @@ app.delete('/api/messages/cleanup', async (req, res) => {
 // ===== СТАТИСТИКА =====
 
 // Получить общую статистику
-app.get('/api/stats', async (req, res) => {
+app.get('/api/stats', authenticateToken, async (req, res) => {
   try {
     // Получаем статистику из базы данных
     const stats = await db.getStats();
@@ -767,7 +1066,7 @@ let parserStatus = {
 let parserProcess = null;
 
 // Получить статус парсера
-app.get('/api/parser/status', async (req, res) => {
+app.get('/api/parser/status', authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Проверяем внешние Python процессы
     const { exec } = require('child_process');
@@ -835,7 +1134,7 @@ app.get('/api/parser/status', async (req, res) => {
 });
 
 // Запустить парсер
-app.post('/api/parser/start', async (req, res) => {
+app.post('/api/parser/start', authenticateToken, requireAdmin, async (req, res) => {
   try {
     if (parserStatus.running) {
       return res.status(400).json({
@@ -927,7 +1226,7 @@ app.post('/api/parser/start', async (req, res) => {
 });
 
 // Остановить парсер
-app.post('/api/parser/stop', (req, res) => {
+app.post('/api/parser/stop', authenticateToken, requireAdmin, (req, res) => {
   try {
     if (!parserStatus.running) {
       return res.status(400).json({

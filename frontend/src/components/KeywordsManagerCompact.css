@@ -64,12 +64,6 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-.keyword-tag:hover {
-  border-color: var(--primary);
-  transform: translateY(-1px);
 }
 
 .keyword-text {
@@ -90,12 +84,6 @@
   color: #dc2626;
   font-size: 12px;
   font-weight: bold;
-  transition: all 0.2s ease;
-}
-
-.keyword-remove:hover {
-  background: rgba(239, 68, 68, 0.2);
-  transform: scale(1.1);
 }
 
 .keyword-remove:disabled {
@@ -154,12 +142,6 @@
   cursor: pointer;
   font-size: 14px;
   font-weight: bold;
-  transition: all 0.2s ease;
-}
-
-.add-btn-compact:hover:not(:disabled) {
-  background: #5145cd;
-  transform: translateY(-1px);
 }
 
 .add-btn-compact:disabled {

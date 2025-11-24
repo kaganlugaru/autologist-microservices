@@ -1,17 +1,19 @@
 /* ЧИСТЫЕ ГЛОБАЛЬНЫЕ СТИЛИ - БЕЗ АНИМАЦИЙ И ЭФФЕКТОВ */
 
-/* БАЗОВАЯ БЛОКИРОВКА ИНТЕРАКТИВНОСТИ */
-*, *::before, *::after,
+/* ПОЛНАЯ БЛОКИРОВКА ВСЕХ АНИМАЦИЙ И ИНТЕРАКТИВНЫХ ЭФФЕКТОВ */
+*, *::before, *::after {
+  animation: none !important;
+  transition: none !important;
+  transform: none !important;
+  outline: none !important;
+}
+
+/* БЛОКИРОВКА HOVER И ИНТЕРАКТИВНЫХ СОСТОЯНИЙ */
 *:hover, *:focus, *:active {
   animation: none !important;
   transition: none !important;
   transform: none !important;
   outline: none !important;
-  cursor: default !important;
-}
-
-/* УСИЛЕННАЯ БЛОКИРОВКА HOVER ЭФФЕКТОВ */
-*:hover, *:focus, *:active {
   background-color: inherit !important;
   color: inherit !important;
   border-color: inherit !important;

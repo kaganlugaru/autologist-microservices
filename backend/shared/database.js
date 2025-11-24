@@ -144,6 +144,51 @@ class DatabaseManager {
   }
 
   /**
+   * Поиск сообщений по нескольким ключевым словам (сложный поиск)
+   */
+  async searchMessagesByMultipleKeywords(keywords, limit = 1000, since = null) {
+    try {
+      let query = this.supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Фильтр по дате
+      if (since) {
+        query = query.gte('created_at', since);
+      }
+
+      // Создаем условие для каждого ключевого слова
+      // Сообщение должно содержать ВСЕ указанные ключевые слова
+      if (keywords && keywords.length > 0) {
+        // Для каждого ключевого слова добавляем фильтр
+        keywords.forEach(keyword => {
+          if (keyword && keyword.trim()) {
+            query = query.ilike('message_text', `%${keyword.trim()}%`);
+          }
+        });
+      }
+
+      query = query.limit(limit);
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Ошибка поиска по множественным ключевым словам:', error);
+      
+      // Fallback: используем простой поиск по первому ключевому слову
+      if (keywords && keywords.length > 0) {
+        console.log('🔄 [Database] Fallback на простой поиск по:', keywords[0]);
+        return this.getRecentMessages(limit, since, keywords[0]);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Получить сообщения для ИИ обработки
    */
   async getUnprocessedMessages(limit = 200) {
@@ -439,6 +484,127 @@ class DatabaseManager {
     } catch (error) {
       console.error('Ошибка очистки старых сообщений:', error);
       throw error;
+    }
+  }
+
+  // ===== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ =====
+
+  /**
+   * Получить пользователя по username
+   */
+  async getUserByUsername(username) {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .select('*')
+        .eq('username', username)
+        .eq('is_active', true)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // Пользователь не найден
+        throw error;
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Ошибка получения пользователя:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Создать нового пользователя
+   */
+  async createUser(username, passwordHash, role = 'user') {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .insert([{
+          username,
+          password_hash: passwordHash,
+          role
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Ошибка создания пользователя:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получить всех пользователей (только для админов)
+   */
+  async getAllUsers() {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .select('id, username, role, created_at, last_login, is_active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Ошибка получения списка пользователей:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Обновить пользователя
+   */
+  async updateUser(id, updates) {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Ошибка обновления пользователя:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Удалить пользователя (деактивировать)
+   */
+  async deleteUser(id) {
+    try {
+      const { data, error } = await this.supabase
+        .from('users')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Ошибка удаления пользователя:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Обновить время последнего входа
+   */
+  async updateLastLogin(userId) {
+    try {
+      await this.supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', userId);
+    } catch (error) {
+      console.error('Ошибка обновления времени входа:', error);
     }
   }
 }

@@ -102,11 +102,6 @@ body {
   padding: 8px 12px;
   cursor: pointer;
   font-size: 13px;
-  transition: background-color 0.2s;
-}
-
-.refresh-btn:hover {
-  background: #f3f4f6;
 }
 
 .refresh-btn:disabled {
@@ -135,13 +130,7 @@ body {
   color: var(--muted);
   border-bottom: 3px solid transparent;
   white-space: nowrap;
-  transition: all 0.2s;
   flex-shrink: 0;
-}
-
-.nav-tab:hover {
-  background: #f3f4f6;
-  color: var(--text);
 }
 
 .nav-tab.active {
@@ -308,11 +297,6 @@ body {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.telegram-btn:hover {
-  transform: translateY(-1px);
 }
 
 /* Утилиты */

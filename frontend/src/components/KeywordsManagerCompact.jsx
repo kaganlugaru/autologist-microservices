@@ -39,17 +39,35 @@ export default function KeywordsManagerCompact({ apiBase, onUpdate, keywords = [
   };
 
   // Удаление ключевого слова
-  const removeKeyword = async (keywordToRemove) => {
+  const removeKeyword = async (keywordObj) => {
+    const keywordText = keywordObj.keyword || keywordObj;
+    const keywordId = keywordObj.id;
+    
+    console.log('🗑️ [Keywords] Удаляем ключевое слово:', keywordText);
+    console.log('🗑️ [Keywords] ID ключевого слова:', keywordId);
+    
     try {
       setLoading(true);
-      const response = await axios.delete(`${apiBase}/keywords/${encodeURIComponent(keywordToRemove)}`);
+      // Используем ID если есть, иначе текст ключевого слова
+      const identifier = keywordId ? keywordId : encodeURIComponent(keywordText);
+      const url = `${apiBase}/keywords/${identifier}`;
+      console.log('🌐 [Keywords] DELETE URL:', url);
+      
+      const response = await axios.delete(url);
+      console.log('📋 [Keywords] Ответ сервера:', response.data);
 
       if (response.data.success) {
         setMessage({ type: 'success', text: 'Удалено' });
+        console.log('✅ [Keywords] Вызываем onUpdate');
         if (onUpdate) onUpdate();
+        setTimeout(() => setMessage(null), 2000);
+      } else {
+        console.log('❌ [Keywords] Сервер вернул ошибку:', response.data);
+        setMessage({ type: 'error', text: 'Ошибка удаления' });
         setTimeout(() => setMessage(null), 2000);
       }
     } catch (error) {
+      console.error('❌ [Keywords] Ошибка при удалении:', error);
       setMessage({ type: 'error', text: 'Ошибка удаления' });
       setTimeout(() => setMessage(null), 2000);
     } finally {
@@ -59,14 +77,18 @@ export default function KeywordsManagerCompact({ apiBase, onUpdate, keywords = [
 
   return (
     <div className="keywords-manager-compact">
-      <div className="keywords-header-compact">
-        <h3>🔍 Ключевые слова ({keywords.length})</h3>
-        {message && (
-          <span className={`message ${message.type}`}>
-            {message.type === 'success' ? '✅' : '❌'} {message.text}
-          </span>
-        )}
-      </div>
+      {message && (
+        <div className={`message ${message.type}`} style={{
+          padding: '10px',
+          marginBottom: '15px',
+          borderRadius: '4px',
+          backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
+          color: message.type === 'success' ? '#155724' : '#721c24',
+          border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+        }}>
+          {message.type === 'success' ? '✅' : '❌'} {message.text}
+        </div>
+      )}
 
       {/* Пояснение по использованию сложных ключевых слов */}
       <div className="keywords-help">
@@ -86,25 +108,28 @@ export default function KeywordsManagerCompact({ apiBase, onUpdate, keywords = [
 
       {/* Список ключевых слов */}
       <div className="keywords-list-compact">
-        {keywords.length === 0 ? (
+        {!keywords || !Array.isArray(keywords) || keywords.length === 0 ? (
           <span className="no-keywords-compact">Не настроены</span>
         ) : (
-          keywords.map((keyword, index) => (
-            <div key={index} className={`keyword-tag ${keyword.includes(';') ? 'complex-keyword' : 'simple-keyword'}`}>
-              <span className="keyword-text">
-                {keyword.includes(';') && <span className="complex-icon">🔗</span>}
-                {keyword}
-              </span>
-              <button
-                onClick={() => removeKeyword(keyword)}
-                className="keyword-remove"
+          keywords.map((keywordObj, index) => {
+            const keywordText = keywordObj.keyword || keywordObj;
+            return (
+              <div key={keywordObj.id || index} className={`keyword-tag ${keywordText.includes(';') ? 'complex-keyword' : 'simple-keyword'}`}>
+                <span className="keyword-text">
+                  {keywordText.includes(';') && <span className="complex-icon">🔗</span>}
+                  {keywordText}
+                </span>
+                <button
+                  onClick={() => removeKeyword(keywordObj)}
+                  className="keyword-remove"
                 disabled={loading}
                 title="Удалить"
               >
                 ×
               </button>
-            </div>
-          ))
+              </div>
+            );
+          })
         )}
       </div>
 

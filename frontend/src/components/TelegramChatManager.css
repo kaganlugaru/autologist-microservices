@@ -71,18 +71,11 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.load-chats-btn:hover:not(:disabled) {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
 }
 
 .load-chats-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  transform: none;
 }
 
 /* СПИСКИ ЧАТОВ */
@@ -105,13 +98,6 @@
   background: var(--surface-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
-  transition: all 0.2s;
-}
-
-.monitored-chat-item:hover,
-.available-chat-item:hover {
-  border-color: var(--primary);
-  background: rgba(59, 130, 246, 0.05);
 }
 
 /* ИНФОРМАЦИЯ О ЧАТЕ */
@@ -167,12 +153,6 @@
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.control-btn:hover:not(:disabled) {
-  border-color: var(--primary);
-  background: rgba(59, 130, 246, 0.05);
 }
 
 .control-btn:disabled {
@@ -185,19 +165,9 @@
   border-color: rgba(245, 158, 11, 0.3);
 }
 
-.control-btn.pause:hover {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: #f59e0b;
-}
-
 .control-btn.play {
   color: #059669;
   border-color: rgba(16, 185, 129, 0.3);
-}
-
-.control-btn.play:hover {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: #059669;
 }
 
 .control-btn.delete {
@@ -205,21 +175,11 @@
   border-color: rgba(239, 68, 68, 0.3);
 }
 
-.control-btn.delete:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: #dc2626;
-}
-
 .control-btn.monitor {
   background: var(--primary);
   color: white;
   border-color: var(--primary);
   font-weight: 500;
-}
-
-.control-btn.monitor:hover:not(:disabled) {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
 }
 
 /* ПУСТЫЕ СОСТОЯНИЯ */

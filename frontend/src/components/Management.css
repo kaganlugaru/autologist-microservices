@@ -1,0 +1,170 @@
+/* Строгий стиль для управления */
+
+.management {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.management-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.management-header h2 {
+  color: #333;
+  font-size: 28px;
+  margin: 0 0 10px 0;
+  font-weight: 600;
+}
+
+.management-header p {
+  color: #666;
+  font-size: 16px;
+  margin: 0;
+}
+
+.management-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+/* На мобильных устройствах - одна колонка */
+@media (max-width: 768px) {
+  .management-panels {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.management-panel {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.panel-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 15px;
+}
+
+.panel-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.recipients-section .info-message {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.info-message p {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-weight: 500;
+}
+
+.recipient-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.field-group label {
+  margin-bottom: 6px;
+  color: #495057;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.field-group input {
+  padding: 10px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.field-group input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.btn-add-recipient {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  height: fit-content;
+}
+
+.recipients-list {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.recipients-list h4 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.recipient-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.recipient-item:last-child {
+  border-bottom: none;
+}
+
+.recipient-item span {
+  color: #495057;
+  font-size: 14px;
+}
+
+.btn-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .management-panels {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .recipient-fields {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
