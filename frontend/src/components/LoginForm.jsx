@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import './LoginForm.css';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+
 const LoginForm = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +22,7 @@ const LoginForm = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

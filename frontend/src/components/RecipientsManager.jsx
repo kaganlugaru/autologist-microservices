@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './RecipientsManager.css';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+
 const RecipientsManager = () => {
     const [recipients, setRecipients] = useState([]);
     const [keywords, setKeywords] = useState([]);
@@ -25,7 +27,7 @@ const RecipientsManager = () => {
         try {
             setLoading(true);
             // Используем новый API endpoint для категорий
-            const response = await fetch('/api/recipient-categories');
+            const response = await fetch(`${API_BASE}/recipient-categories`);
             if (response.ok) {
                 const result = await response.json();
                 setRecipients(result.data || []);
@@ -41,7 +43,7 @@ const RecipientsManager = () => {
 
     const loadKeywords = async () => {
         try {
-            const response = await fetch('/api/keywords');
+            const response = await fetch(`${API_BASE}/keywords`);
             if (response.ok) {
                 const result = await response.json();
                 setKeywords(result.data || []);
@@ -63,7 +65,7 @@ const RecipientsManager = () => {
         try {
             setLoading(true);
             // Отправляем данные в новый API endpoint для категорий
-            const response = await fetch('/api/recipient-categories', {
+            const response = await fetch(`${API_BASE}/recipient-categories`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -99,7 +101,7 @@ const RecipientsManager = () => {
 
     const toggleRecipientActive = async (id, currentStatus) => {
         try {
-            const response = await fetch(`/api/recipient-categories/${id}`, {
+            const response = await fetch(`${API_BASE}/recipient-categories/${id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -125,7 +127,7 @@ const RecipientsManager = () => {
         }
 
         try {
-            const response = await fetch(`/api/recipient-categories/${id}`, {
+            const response = await fetch(`${API_BASE}/recipient-categories/${id}`, {
                 method: 'DELETE',
             });
 
